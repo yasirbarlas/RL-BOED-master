@@ -7,6 +7,7 @@ import warnings
 import numpy as np
 import torch
 
+<<<<<<< HEAD
 #from garage.np import concat_tensor_dict_list, pad_batch_array, slice_nested_dict, stack_tensor_dict_list
 
 def concat_tensor_dict_list(tensor_dict_list):
@@ -124,6 +125,14 @@ def stack_tensor_dict_list(tensor_dict_list):
 
 # pylint: disable=too-many-lines
 
+=======
+from garage.np import (concat_tensor_dict_list, pad_batch_array,
+                       slice_nested_dict, stack_tensor_dict_list)
+
+# pylint: disable=too-many-lines
+
+
+>>>>>>> 86e044686651f01bd66c1063c70693c2645fd0b3
 class StepType(enum.IntEnum):
     """Defines the status of a :class:`~TimeStep` within a sequence.
 

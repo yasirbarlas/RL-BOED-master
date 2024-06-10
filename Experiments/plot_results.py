@@ -91,4 +91,12 @@ ax.set_title(f"{title_template} Training", fontsize=titlesize)
 plt.grid(True)
 fig.tight_layout()
 
+<<<<<<< HEAD
 fig.savefig(f"{file_template}_returns.png")
+=======
+<<<<<<< HEAD
+fig.savefig("source_returns.png")
+=======
+fig.savefig(f"{file_template}_returns.png")
+>>>>>>> master
+>>>>>>> 86e044686651f01bd66c1063c70693c2645fd0b3

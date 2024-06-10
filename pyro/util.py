@@ -12,9 +12,12 @@ from contextlib import contextmanager
 
 from pyro.poutine.util import site_is_subsample
 
+<<<<<<< HEAD
 import sys
 import numpy as np
 
+=======
+>>>>>>> 86e044686651f01bd66c1063c70693c2645fd0b3
 
 def set_rng_seed(rng_seed):
     """
@@ -444,6 +447,7 @@ def binary_discount_cumsum(x, discount):
         return x
     elif discount == 1:
         return torch.flip(torch.cumsum(torch.flip(x, dims=[0]), 0), dims=[0])
+<<<<<<< HEAD
     raise ValueError(f"discount must be 0 or 1 but was {discount}")
 
 seed_ = None
@@ -503,3 +507,6 @@ def get_tf_seed_stream():
     if seed_stream_ is None:
         set_seed(0)
     return seed_stream_() % 4294967294
+=======
+    raise ValueError(f"discount must be 0 or 1 but was {discount}")
+>>>>>>> 86e044686651f01bd66c1063c70693c2645fd0b3

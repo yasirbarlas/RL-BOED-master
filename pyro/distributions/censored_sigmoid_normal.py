@@ -1,7 +1,10 @@
 import torch
 from torch.distributions import constraints
 from torch.distributions.transforms import SigmoidTransform
+<<<<<<< HEAD
 from torch.distributions.utils import broadcast_all
+=======
+>>>>>>> 86e044686651f01bd66c1063c70693c2645fd0b3
 
 from pyro.distributions import TorchDistribution, Normal, TransformedDistribution
 from pyro.util import is_bad
@@ -10,16 +13,27 @@ from pyro.distributions.score_parts import ScoreParts
 
 class CensoredSigmoidNormal(TorchDistribution):
 
+<<<<<<< HEAD
     arg_constraints = {"loc": constraints.real, "scale": constraints.real, "upper_lim": constraints.real, "lower_lim": constraints.real}
 
     def __init__(self, loc, scale, upper_lim, lower_lim, validate_args=None):
         self.loc, self.scale = broadcast_all(loc, scale)
         normal = Normal(self.loc, self.scale, validate_args=validate_args)
+=======
+    def __init__(self, loc, scale, upper_lim, lower_lim, validate_args=None):
+
+        normal = Normal(loc, scale, validate_args=validate_args)
+>>>>>>> 86e044686651f01bd66c1063c70693c2645fd0b3
         self.transform = SigmoidTransform()
         self.base_dist = TransformedDistribution(normal, [self.transform])
         # Log-prob only computed correctly for univariate base distribution
         assert self.base_dist.event_dim == 0 or self.base_dist.event_dim == 1 and self.base_dist.event_shape[0] == 1
+<<<<<<< HEAD
         self.upper_lim, self.lower_lim = broadcast_all(upper_lim, lower_lim)
+=======
+        self.upper_lim = upper_lim
+        self.lower_lim = lower_lim
+>>>>>>> 86e044686651f01bd66c1063c70693c2645fd0b3
 
         super(CensoredSigmoidNormal, self).__init__(self.base_dist.batch_shape, self.base_dist.event_shape,
                                                     validate_args=validate_args)

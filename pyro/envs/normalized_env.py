@@ -1,5 +1,11 @@
 """An environment wrapper that normalizes action, observation and reward."""
+<<<<<<< HEAD
 import gymnasium as gym
+=======
+import gym
+import gym.spaces
+import gym.spaces.utils
+>>>>>>> 86e044686651f01bd66c1063c70693c2645fd0b3
 import pyro.spaces
 import torch
 

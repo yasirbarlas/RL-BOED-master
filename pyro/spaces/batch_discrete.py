@@ -12,7 +12,11 @@ class BatchDiscrete(Discrete):
         super(BatchDiscrete, self).__init__(n)
         assert floor < n
         self.floor = floor
+<<<<<<< HEAD
         self._shape_ = shape
+=======
+        self.shape = shape
+>>>>>>> 86e044686651f01bd66c1063c70693c2645fd0b3
 
     def sample(self, shape=(1,)):
         return torch.randint(low=self.floor, high=self.n, size=shape)
@@ -43,7 +47,10 @@ class BatchDiscrete(Discrete):
     @property
     def is_discrete(self):
         return True
+<<<<<<< HEAD
     
     @property
     def shape(self):
         return self._shape_
+=======
+>>>>>>> 86e044686651f01bd66c1063c70693c2645fd0b3

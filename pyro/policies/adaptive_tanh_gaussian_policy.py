@@ -11,8 +11,12 @@ from torch import nn
 
 
 class AdaptiveTanhGaussianPolicy(StochasticPolicy):
+<<<<<<< HEAD
     """
     Multiheaded MLP with an encoder and pooling operation.
+=======
+    """Multiheaded MLP with an encoder and pooling operation.
+>>>>>>> 86e044686651f01bd66c1063c70693c2645fd0b3
 
     A policy that takes as input entire histories and maps them to a Gaussian
     distribution with a tanh transformation. Inputs to the network should be of

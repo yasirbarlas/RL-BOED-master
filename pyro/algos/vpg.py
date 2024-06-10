@@ -7,12 +7,24 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
+<<<<<<< HEAD
 from pyro import log_performance
 from garage.np.algos import RLAlgorithm
 from garage.torch import compute_advantages, filter_valids, pad_to_last
 from garage.torch.optimizers import OptimizerWrapper
 from pyro.util import binary_discount_cumsum
 from pyro._dtypes import TrajectoryBatch
+=======
+
+from garage.np.algos.rl_algorithm import RLAlgorithm
+from garage.sampler import OnPolicyVectorizedSampler
+from garage.torch import (compute_advantages, filter_valids, pad_to_last)
+from garage.torch.optimizers import OptimizerWrapper
+from pyro import log_performance
+from pyro._dtypes import TrajectoryBatch
+from pyro.util import binary_discount_cumsum
+
+>>>>>>> 86e044686651f01bd66c1063c70693c2645fd0b3
 
 class VPG(RLAlgorithm):
     """Vanilla Policy Gradient (REINFORCE).
@@ -20,15 +32,26 @@ class VPG(RLAlgorithm):
     VPG, also known as Reinforce, trains stochastic policy in an on-policy way.
 
     Args:
+<<<<<<< HEAD
         env_spec (EnvSpec): Environment specification.
         policy (garage.torch.policies.Policy): Policy.
         value_function (garage.torch.value_functions.ValueFunction): The value
             function.
         sampler (garage.sampler.Sampler): Sampler.
+=======
+        env_spec (garage.envs.EnvSpec): Environment specification.
+        policy (garage.torch.policies.Policy): Policy.
+        value_function (garage.torch.value_functions.ValueFunction): The value
+            function.
+>>>>>>> 86e044686651f01bd66c1063c70693c2645fd0b3
         policy_optimizer (garage.torch.optimizer.OptimizerWrapper): Optimizer
             for policy.
         vf_optimizer (garage.torch.optimizer.OptimizerWrapper): Optimizer for
             value function.
+<<<<<<< HEAD
+=======
+        max_path_length (int): Maximum length of a single rollout.
+>>>>>>> 86e044686651f01bd66c1063c70693c2645fd0b3
         num_train_per_epoch (int): Number of train_once calls per epoch.
         discount (float): Discount.
         gae_lambda (float): Lambda used for generalized advantage
@@ -54,6 +77,7 @@ class VPG(RLAlgorithm):
     """
 
     def __init__(
+<<<<<<< HEAD
         self,
         env_spec,
         policy,
@@ -74,6 +98,28 @@ class VPG(RLAlgorithm):
     ):
         self.discount = discount
         self.policy = policy
+=======
+            self,
+            env_spec,
+            policy,
+            value_function,
+            policy_optimizer=None,
+            vf_optimizer=None,
+            max_path_length=500,
+            num_train_per_epoch=1,
+            discount=0.99,
+            gae_lambda=1,
+            center_adv=True,
+            positive_adv=False,
+            policy_ent_coeff=0.0,
+            use_softplus_entropy=False,
+            stop_entropy_gradient=False,
+            entropy_method='no_entropy',
+    ):
+        self.discount = discount
+        self.policy = policy
+        self.max_path_length = max_path_length
+>>>>>>> 86e044686651f01bd66c1063c70693c2645fd0b3
 
         self._value_function = value_function
         self._gae_lambda = gae_lambda
@@ -86,16 +132,23 @@ class VPG(RLAlgorithm):
         self._n_samples = num_train_per_epoch
         self._env_spec = env_spec
 
+<<<<<<< HEAD
         # Added
         self._sampler = sampler
         self.max_path_length = max_path_length
 
+=======
+>>>>>>> 86e044686651f01bd66c1063c70693c2645fd0b3
         self._maximum_entropy = (entropy_method == 'max')
         self._entropy_regularzied = (entropy_method == 'regularized')
         self._check_entropy_configuration(entropy_method, center_adv,
                                           stop_entropy_gradient,
                                           policy_ent_coeff)
         self._episode_reward_mean = collections.deque(maxlen=100)
+<<<<<<< HEAD
+=======
+        self.sampler_cls = OnPolicyVectorizedSampler
+>>>>>>> 86e044686651f01bd66c1063c70693c2645fd0b3
 
         if policy_optimizer:
             self._policy_optimizer = policy_optimizer
@@ -506,4 +559,8 @@ class VPG(RLAlgorithm):
         with torch.no_grad():
             baselines = self._value_function(obs, masks)
 
+<<<<<<< HEAD
         return obs, actions, rewards, returns, valids, baselines
+=======
+        return obs, actions, rewards, returns, valids, baselines
+>>>>>>> 86e044686651f01bd66c1063c70693c2645fd0b3

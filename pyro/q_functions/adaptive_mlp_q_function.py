@@ -17,8 +17,13 @@ class AdaptiveMLPQFunction(nn.Module):
     (batch_dim, history_length, obs_dim)
 
     Args:
+<<<<<<< HEAD
         env_spec (garage.envs.env_spec.EnvSpec): Environment specification.
         encoder_sizes (list[int]): Output dimension of dense layer(s) for
+=======
+            env_spec (garage.envs.env_spec.EnvSpec): Environment specification.
+            encoder_sizes (list[int]): Output dimension of dense layer(s) for
+>>>>>>> 86e044686651f01bd66c1063c70693c2645fd0b3
             the MLP for encoder. For example, (32, 32) means the MLP consists
             of two hidden layers, each with 32 hidden units.
         encoder_nonlinearity (callable): Activation function for intermediate
