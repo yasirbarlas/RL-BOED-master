@@ -1,10 +1,6 @@
 import torch
 
-<<<<<<< HEAD
 from gymnasium import Env
-=======
-from gym import Env
->>>>>>> 86e044686651f01bd66c1063c70693c2645fd0b3
 
 LOWER = 0
 UPPER = 1
@@ -115,8 +111,4 @@ class AdaptiveDesignEnv(Env):
         return reward
 
     def render(self, mode='human'):
-<<<<<<< HEAD
         pass
-=======
-        pass
->>>>>>> 86e044686651f01bd66c1063c70693c2645fd0b3

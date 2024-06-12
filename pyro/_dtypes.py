@@ -6,8 +6,9 @@ import warnings
 
 import numpy as np
 import torch
+import akro
+import collections
 
-<<<<<<< HEAD
 #from garage.np import concat_tensor_dict_list, pad_batch_array, slice_nested_dict, stack_tensor_dict_list
 
 def concat_tensor_dict_list(tensor_dict_list):
@@ -60,7 +61,7 @@ def pad_batch_array(array, lengths, max_length=None):
                       'requested')
         max_length = max(lengths)
 
-    padded = np.zeros((len(lengths), max_length) + array.shape[1:],
+    padded = torch.zeros((len(lengths), max_length) + array.shape[1:],
                       dtype=array.dtype)
     start = 0
     for i, length in enumerate(lengths):
@@ -123,16 +124,33 @@ def stack_tensor_dict_list(tensor_dict_list):
 
     return ret
 
+def split_tensor_dict_list(tensor_dict):
+    """Split dictionary of list of tensor.
+
+    Args:
+        tensor_dict (dict[numpy.ndarray]): a dictionary of {tensors or
+            dictionary of tensors}.
+
+    Return:
+        dict: a dictionary of {stacked tensors or dictionary of
+            stacked tensors}
+
+    """
+    keys = list(tensor_dict.keys())
+    ret = None
+    for k in keys:
+        vals = tensor_dict[k]
+        if isinstance(vals, dict):
+            vals = split_tensor_dict_list(vals)
+        if ret is None:
+            ret = [{k: v} for v in vals]
+        else:
+            for v, cur_dict in zip(vals, ret):
+                cur_dict[k] = v
+    return ret
+
 # pylint: disable=too-many-lines
 
-=======
-from garage.np import (concat_tensor_dict_list, pad_batch_array,
-                       slice_nested_dict, stack_tensor_dict_list)
-
-# pylint: disable=too-many-lines
-
-
->>>>>>> 86e044686651f01bd66c1063c70693c2645fd0b3
 class StepType(enum.IntEnum):
     """Defines the status of a :class:`~TimeStep` within a sequence.
 

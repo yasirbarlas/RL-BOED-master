@@ -49,6 +49,7 @@ class PPO(VPG):
                  policy,
                  value_function,
                  sampler,
+                 max_episode_length,
                  policy_optimizer=None,
                  vf_optimizer=None,
                  lr_clip_range=2e-1,
@@ -79,6 +80,7 @@ class PPO(VPG):
                          policy=policy,
                          value_function=value_function,
                          sampler=sampler,
+                         max_episode_length=max_episode_length,
                          policy_optimizer=policy_optimizer,
                          vf_optimizer=vf_optimizer,
                          num_train_per_epoch=num_train_per_epoch,
@@ -126,7 +128,7 @@ class PPO(VPG):
                                             min=1 - self._lr_clip_range,
                                             max=1 + self._lr_clip_range)
 
-        # Calculate surrotate clip
+        # Calculate surrogate clip
         surrogate_clip = likelihood_ratio_clip * advantages
 
         return torch.min(surrogate, surrogate_clip)

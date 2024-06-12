@@ -12,12 +12,9 @@ from contextlib import contextmanager
 
 from pyro.poutine.util import site_is_subsample
 
-<<<<<<< HEAD
 import sys
 import numpy as np
-
-=======
->>>>>>> 86e044686651f01bd66c1063c70693c2645fd0b3
+import scipy.signal
 
 def set_rng_seed(rng_seed):
     """
@@ -441,14 +438,29 @@ def torch_float(x):
 def clip(x, min, max):
     return torch.maximum(torch.minimum(x, max), min)
 
+def discount_cumsum(x, discount):
+    """Discounted cumulative sum for PyTorch tensors.
+
+    Args:
+        x (torch.Tensor): Input tensor.
+        discount (float): Discount factor.
+
+    Returns:
+        torch.Tensor: Discounted cumulative sum.
+    """
+    y = torch.zeros_like(x)
+    y[-1] = x[-1]
+    for t in reversed(range(x.shape[0] - 1)):
+        y[t] = x[t] + discount * y[t + 1]
+    return y
 
 def binary_discount_cumsum(x, discount):
     if discount == 0:
         return x
     elif discount == 1:
         return torch.flip(torch.cumsum(torch.flip(x, dims=[0]), 0), dims=[0])
-<<<<<<< HEAD
-    raise ValueError(f"discount must be 0 or 1 but was {discount}")
+    else:
+        return discount_cumsum(x, discount)
 
 seed_ = None
 seed_stream_ = None
@@ -507,6 +519,3 @@ def get_tf_seed_stream():
     if seed_stream_ is None:
         set_seed(0)
     return seed_stream_() % 4294967294
-=======
-    raise ValueError(f"discount must be 0 or 1 but was {discount}")
->>>>>>> 86e044686651f01bd66c1063c70693c2645fd0b3

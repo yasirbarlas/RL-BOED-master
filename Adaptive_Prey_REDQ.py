@@ -94,12 +94,13 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
             model = PreyModel(n_parallel=n_parallel)
             
             def make_env(design_space, obs_space, model, budget, n_cont_samples,
-                         bound_type):
+                         bound_type, true_model=None):
                 env = GymEnv(
                     normalize(
                         AdaptiveDesignEnv(
                             design_space, obs_space, model, budget,
-                            n_cont_samples, bound_type=bound_type),
+                            n_cont_samples, true_model=true_model,
+                            bound_type=bound_type),
                         normalize_obs=True
                     )
                 )

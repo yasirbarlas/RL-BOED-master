@@ -237,7 +237,7 @@ class PreyModel(ExperimentModel):
                 n_t = int_sol[-1].reshape(design.shape)
                 p_t = (design - n_t) / design
                 emission_dist = dist.Binomial(design.reshape(a.shape),
-                                              p_t.reshape(a.shape)).to_event(1)
+                                              p_t.reshape(a.shape), validate_args=False).to_event(1)
                 n = pyro.sample(
                     self.obs_label, emission_dist
                 )

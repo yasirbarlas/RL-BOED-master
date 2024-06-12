@@ -4,11 +4,7 @@ import copy
 import warnings
 
 import akro
-<<<<<<< HEAD
 import gymnasium as gym
-=======
-import gym
->>>>>>> 86e044686651f01bd66c1063c70693c2645fd0b3
 import numpy as np
 
 from garage import Environment, EnvSpec, EnvStep, StepType
@@ -148,11 +144,7 @@ class GymEnv(Environment):
         self._max_episode_length = _get_time_limit(self._env,
                                                    max_episode_length)
 
-<<<<<<< HEAD
         self._render_modes = self._env.metadata['render_modes']
-=======
-        self._render_modes = self._env.metadata['render.modes']
->>>>>>> 86e044686651f01bd66c1063c70693c2645fd0b3
 
         self._step_cnt = None
         self._visualize = False

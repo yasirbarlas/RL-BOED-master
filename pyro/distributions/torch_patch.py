@@ -2,11 +2,7 @@ import weakref
 
 import torch
 
-<<<<<<< HEAD
 #assert torch.__version__.startswith('1.')
-=======
-assert torch.__version__.startswith('1.')
->>>>>>> 86e044686651f01bd66c1063c70693c2645fd0b3
 
 
 def patch_dependency(target, root_module=torch):

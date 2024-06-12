@@ -11,7 +11,7 @@ import psutil
 from garage.experiment.deterministic import get_seed, set_seed
 from garage.experiment.snapshotter import Snapshotter
 from garage.sampler import parallel_sampler
-from garage.sampler.sampler_deprecated import BaseSampler
+from garage.sampler import Sampler
 # This is avoiding a circular import
 from garage.sampler.default_worker import DefaultWorker  # noqa: I100
 from garage.sampler.worker_factory import WorkerFactory
@@ -203,7 +203,7 @@ class LocalRunner:
             sampler_args = {}
         if worker_args is None:
             worker_args = {}
-        if issubclass(sampler_cls, BaseSampler):
+        if issubclass(sampler_cls, Sampler):
             return sampler_cls(self._algo, self._env, **sampler_args)
         else:
             return sampler_cls.from_worker_factory(WorkerFactory(
@@ -278,7 +278,7 @@ class LocalRunner:
 
     def _start_worker(self):
         """Start Plotter and Sampler workers."""
-        if isinstance(self._sampler, BaseSampler):
+        if isinstance(self._sampler, Sampler):
             self._sampler.start_worker()
         if self._plot:
             # pylint: disable=import-outside-toplevel
@@ -330,7 +330,7 @@ class LocalRunner:
                              'Either provide `batch_size` to runner.train, '
                              ' or pass `batch_size` to runner.obtain_samples.')
         paths = None
-        if isinstance(self._sampler, BaseSampler):
+        if isinstance(self._sampler, Sampler):
             paths = self._sampler.obtain_samples(
                 itr, (batch_size or self._train_args.batch_size))
         else:

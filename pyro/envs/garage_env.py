@@ -3,11 +3,7 @@
 import copy
 
 import akro
-<<<<<<< HEAD
 import gymnasium as gym
-=======
-import gym
->>>>>>> 86e044686651f01bd66c1063c70693c2645fd0b3
 
 from garage.envs.env_spec import EnvSpec
 

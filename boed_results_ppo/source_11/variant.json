@@ -1,0 +1,22 @@
+{
+  "n_parallel": 100,
+  "budget": 30,
+  "n_rl_itr": 20001,
+  "n_cont_samples": 100000,
+  "seed": 373693,
+  "src_filepath": null,
+  "discount": 1.0,
+  "k": 2,
+  "d": 2,
+  "pi_lr": 0.0003,
+  "vf_lr": 0.0003,
+  "minibatch_size": 4096,
+  "entropy_method": "max",
+  "lr_clip_range": 0.2,
+  "gae_lambda": 0.97,
+  "policy_ent_coeff": 0.01,
+  "center_adv": false,
+  "positive_adv": false,
+  "use_softplus_entropy": true,
+  "stop_entropy_gradient": true
+}

@@ -19,6 +19,10 @@ from pyro.sampler.vector_worker import VectorWorker
 from pyro.spaces.batch_box import BatchBox
 from pyro.util import set_seed
 from torch import nn
+from dowel import logger
+
+from garage.torch.optimizers import OptimizerWrapper
+from pyro.optim import ConjugateGradientOptimizer
 
 seeds = [373693, 943929, 675273, 79387, 508137, 557390, 756177, 155183, 262598,
          572185]
@@ -26,32 +30,43 @@ seeds = [373693, 943929, 675273, 79387, 508137, 557390, 756177, 155183, 262598,
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
-         log_dir=None, snapshot_mode='gap', snapshot_gap=500, bound_type=LOWER,
-         src_filepath=None, discount=1.):
+         log_dir=None, snapshot_mode="gap", snapshot_gap=500, bound_type=LOWER,
+         src_filepath=None, discount=1., k=2, d=2, log_info=None,
+         vf_lr=3e-4, minibatch_size=4096, entropy_method="no_entropy"):
+    if log_info is None:
+        log_info = []
+
     @wrap_experiment(log_dir=log_dir, snapshot_mode=snapshot_mode,
                      snapshot_gap=snapshot_gap)
     def trpo_source(ctxt=None, n_parallel=1, budget=1, n_rl_itr=1,
-                   n_cont_samples=10, seed=0, src_filepath=None,
-                   discount=1.):
+                   n_cont_samples=10, seed=0, src_filepath=None, discount=1.,
+                   k=2, d=2, vf_lr=3e-4, minibatch_size=4096, entropy_method="no_entropy"):
         
+        if log_info:
+            logger.log(str(log_info))
+
         if torch.cuda.is_available():
             torch.set_default_device(device)
+            logger.log("GPU available")
+        else:
+            logger.log("No GPU detected")
 
         set_seed(seed)
         set_rng_seed(seed)
+        # if there is a saved agent to load
         if src_filepath:
-            print(f"loading data from {src_filepath}")
+            logger.log(f"loading data from {src_filepath}")
             data = joblib.load(src_filepath)
-            env = data['env']
-            trpo = data['algo']
+            env = data["env"]
+            trpo = data["algo"]
         else:
-            print("creating new policy")
-            layer_size = 256
-            design_space = BatchBox(low=-4., high=4., shape=(1, 1, 1, 2))
-            obs_space = BatchBox(low=torch.as_tensor([-8., -8., -3.]),
-                                 high=torch.as_tensor([8., 8., 10.])
+            logger.log("creating new policy")
+            layer_size = 128
+            design_space = BatchBox(low=-4., high=4., shape=(1, 1, 1, d))
+            obs_space = BatchBox(low=torch.as_tensor([-4.] * d + [-3.]),
+                                 high=torch.as_tensor([4.] * d + [10.])
                                  )
-            model = SourceModel(n_parallel=n_parallel)
+            model = SourceModel(n_parallel=n_parallel, d=d, k=k)
 
             def make_env(design_space, obs_space, model, budget, n_cont_samples,
                          bound_type, true_model=None):
@@ -95,8 +110,20 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
 
             env = make_env(design_space, obs_space, model, budget,
                            n_cont_samples, bound_type)
+            
             policy = make_policy()
-            vf = make_v_func()
+            value_function = make_v_func()
+
+            policy_optimizer = OptimizerWrapper(
+                (ConjugateGradientOptimizer, dict(max_constraint_value=0.01)),
+                policy,
+                minibatch_size=minibatch_size)
+            
+            vf_optimizer = OptimizerWrapper(
+                (torch.optim.Adam, dict(lr=vf_lr)),
+                value_function,
+                max_optimization_epochs=10,
+                minibatch_size=minibatch_size)
 
             sampler = LocalSampler(agents=policy, envs=env,
                                    max_episode_length=budget,
@@ -104,11 +131,20 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
 
             trpo = TRPO(env_spec=env.spec,
                         policy=policy,
-                        value_function=vf,
-                        #max_path_length=budget,
-                        sampler = sampler,
+                        value_function=value_function,
+                        sampler=sampler,
+                        max_episode_length=budget,
+                        policy_optimizer=policy_optimizer,
+                        vf_optimizer=vf_optimizer,
+                        num_train_per_epoch=1,
                         discount=discount,
-                        center_adv=False)
+                        gae_lambda=0.97,
+                        center_adv=False,
+                        positive_adv=False,
+                        policy_ent_coeff=0.01,
+                        use_softplus_entropy=False,
+                        stop_entropy_gradient=True,
+                        entropy_method=entropy_method)
 
         trainer = Trainer(snapshot_config=ctxt)
         trainer.setup(algo=trpo, env=env)
@@ -116,8 +152,10 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
 
     trpo_source(n_parallel=n_parallel, budget=budget, n_rl_itr=n_rl_itr,
                n_cont_samples=n_cont_samples, seed=seed,
-               src_filepath=src_filepath, discount=discount)
+               src_filepath=src_filepath, discount=discount, k=k,
+               d=d, vf_lr=vf_lr, minibatch_size=minibatch_size, entropy_method=entropy_method)
 
+    logger.dump_all()
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -133,12 +171,21 @@ if __name__ == "__main__":
     parser.add_argument("--bound-type", default="terminal", type=str.lower,
                         choices=["lower", "upper", "terminal"])
     parser.add_argument("--discount", default="1", type=float)
+    parser.add_argument("--d", default="2", type=int)
+    parser.add_argument("--k", default="2", type=int)
+    parser.add_argument("--vf-lr", default="3e-4", type=float)
+    parser.add_argument("--minibatch-size", default="4096", type=int)
+    parser.add_argument("--entropy-method", default="regularized", type=str.lower,
+                        choices=["max", "regularized", "no_entropy"])
     args = parser.parse_args()
     bound_type_dict = {"lower": LOWER, "upper": UPPER, "terminal": TERMINAL}
     bound_type = bound_type_dict[args.bound_type]
     exp_id = args.id
+    log_info = f"input params: {vars(args)}"
     main(n_parallel=args.n_parallel, budget=args.budget, n_rl_itr=args.n_rl_itr,
          n_cont_samples=args.n_contr_samples, seed=seeds[exp_id - 1],
          log_dir=args.log_dir, snapshot_mode=args.snapshot_mode,
          snapshot_gap=args.snapshot_gap, bound_type=bound_type,
-         src_filepath=args.src_filepath, discount=args.discount)
+         src_filepath=args.src_filepath, discount=args.discount,
+         k=args.k, d=args.d, log_info=log_info,
+         vf_lr=args.vf_lr, minibatch_size=args.minibatch_size, entropy_method = args.entropy_method)

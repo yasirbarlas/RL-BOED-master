@@ -2,39 +2,23 @@
 import torch
 
 from pyro.algos import VPG
-<<<<<<< HEAD
-from garage.torch.optimizers import OptimizerWrapper
-from pyro.optim import ConjugateGradientOptimizer
-=======
 from pyro.optim import ConjugateGradientOptimizer
 from garage.torch.optimizers import OptimizerWrapper
->>>>>>> 86e044686651f01bd66c1063c70693c2645fd0b3
 
 
 class TRPO(VPG):
     """Trust Region Policy Optimization (TRPO).
 
     Args:
-<<<<<<< HEAD
         env_spec (EnvSpec): Environment specification.
         policy (garage.torch.policies.Policy): Policy.
         value_function (garage.torch.value_functions.ValueFunction): The value
             function.
         sampler (garage.sampler.Sampler): Sampler.
-=======
-        env_spec (garage.envs.EnvSpec): Environment specification.
-        policy (garage.torch.policies.Policy): Policy.
-        value_function (garage.torch.value_functions.ValueFunction): The value
-            function.
->>>>>>> 86e044686651f01bd66c1063c70693c2645fd0b3
         policy_optimizer (garage.torch.optimizer.OptimizerWrapper): Optimizer
             for policy.
         vf_optimizer (garage.torch.optimizer.OptimizerWrapper): Optimizer for
             value function.
-<<<<<<< HEAD
-=======
-        max_path_length (int): Maximum length of a single rollout.
->>>>>>> 86e044686651f01bd66c1063c70693c2645fd0b3
         num_train_per_epoch (int): Number of train_once calls per epoch.
         discount (float): Discount.
         gae_lambda (float): Lambda used for generalized advantage
@@ -63,16 +47,10 @@ class TRPO(VPG):
                  env_spec,
                  policy,
                  value_function,
-<<<<<<< HEAD
                  sampler,
+                 max_episode_length,
                  policy_optimizer=None,
                  vf_optimizer=None,
-                 #max_path_length=500,
-=======
-                 policy_optimizer=None,
-                 vf_optimizer=None,
-                 max_path_length=100,
->>>>>>> 86e044686651f01bd66c1063c70693c2645fd0b3
                  num_train_per_epoch=1,
                  discount=0.99,
                  gae_lambda=0.98,
@@ -97,16 +75,10 @@ class TRPO(VPG):
         super().__init__(env_spec=env_spec,
                          policy=policy,
                          value_function=value_function,
-<<<<<<< HEAD
-                         #max_path_length=max_path_length,
                          sampler=sampler,
+                         max_episode_length=max_episode_length,
                          policy_optimizer=policy_optimizer,
                          vf_optimizer=vf_optimizer,
-=======
-                         policy_optimizer=policy_optimizer,
-                         vf_optimizer=vf_optimizer,
-                         max_path_length=max_path_length,
->>>>>>> 86e044686651f01bd66c1063c70693c2645fd0b3
                          num_train_per_epoch=num_train_per_epoch,
                          discount=discount,
                          gae_lambda=gae_lambda,

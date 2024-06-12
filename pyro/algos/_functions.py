@@ -5,10 +5,7 @@ import torch
 from pyro.sampler.utils import rollout
 from pyro._dtypes import EpisodeBatch
 
-<<<<<<< HEAD
 import abc
-=======
->>>>>>> 86e044686651f01bd66c1063c70693c2645fd0b3
 
 def obtain_evaluation_episodes(policy, env, max_path_length=1000,
                                num_eps=100, n_parallel=1):
@@ -50,7 +47,6 @@ def obtain_evaluation_episodes(policy, env, max_path_length=1000,
                         env_infos=path["env_infos"],
                         agent_infos=path["agent_infos"],
                         lengths=lengths)
-<<<<<<< HEAD
 
 """Interface of RLAlgorithm."""
 
@@ -111,5 +107,3 @@ class MetaRLAlgorithm(RLAlgorithm, abc.ABC):
                 exploration_episodes.
 
         """
-=======
->>>>>>> 86e044686651f01bd66c1063c70693c2645fd0b3
