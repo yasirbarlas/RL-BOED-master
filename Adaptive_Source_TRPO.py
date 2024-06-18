@@ -1,3 +1,6 @@
+"""
+Use Trust Region Policy Optimisation to learn an agent that adaptively designs source location experiments
+"""
 import argparse
 
 import joblib

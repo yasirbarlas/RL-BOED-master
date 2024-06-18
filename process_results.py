@@ -13,7 +13,7 @@ def str_to_np(arr_str):
 	return np.array(eval(arr_str))
 
 def main(fpaths, dest):
-	fpaths = fpaths.split(",")
+	fpaths = fpaths.split(", ")
 	ameans = []
 	astds = []
 	rmedians = []
@@ -103,7 +103,6 @@ def main(fpaths, dest):
 		rmaxs=rmaxs, rmins=rmins, pstds=pstds, pmeans=pmeans, emeans=emeans,
 		estds=estds, alphas=alphas, qlosses=qlosses, plosses=plosses
 	)
-
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser(description="RL results parser")
 	parser.add_argument("--fpaths", nargs="?", default="", type=str)

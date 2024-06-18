@@ -9,7 +9,6 @@ import numpy as np
 
 #from garage.experiment import deterministic
 #from garage.torch import set_gpu_mode
-#from os import environ
 from pyro import wrap_experiment, set_rng_seed
 from pyro.algos import REDQ
 from pyro.envs import AdaptiveDesignEnv, GymEnv, normalize

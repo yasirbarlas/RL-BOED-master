@@ -1,5 +1,5 @@
 """
-Use ppo to learn an agent that adaptively designs source location experiments
+Use Proximal Policy Optimisation to learn an agent that adaptively designs source location experiments
 """
 import argparse
 
@@ -9,7 +9,6 @@ import numpy as np
 
 #from garage.experiment import deterministic
 #from garage.torch import set_gpu_mode
-#from os import environ
 from pyro import wrap_experiment, set_rng_seed
 from pyro.algos import PPO
 from pyro.envs import AdaptiveDesignEnv, GymEnv, normalize

@@ -1,5 +1,5 @@
 """
-Use REDQ to learn an agent that adaptively designs constant elasticity of
+Use Trust Region Policy Optimisation to learn an agent that adaptively designs constant elasticity of
 substitution experiments
 """
 import argparse
@@ -11,20 +11,22 @@ import numpy as np
 #from garage.experiment import deterministic
 #from garage.torch import set_gpu_mode
 from pyro import wrap_experiment, set_rng_seed
-from pyro.algos import REDQ
+from pyro.algos import TRPO
 from pyro.envs import AdaptiveDesignEnv, GymEnv, normalize
 from pyro.envs.adaptive_design_env import LOWER, UPPER, TERMINAL
 from pyro.experiment import Trainer
 from pyro.models.adaptive_experiment_model import CESModel
-from pyro.policies.adaptive_tanh_gaussian_policy import AdaptiveTanhGaussianPolicy
-from pyro.q_functions.adaptive_mlp_q_function import AdaptiveMLPQFunction
-from pyro.replay_buffer import PathBuffer
+from pyro.policies import AdaptiveGaussianMLPPolicy
+from pyro.value_functions import AdaptiveMLPValueFunction
 from pyro.sampler.local_sampler import LocalSampler
 from pyro.sampler.vector_worker import VectorWorker
 from pyro.spaces.batch_box import BatchBox
 from pyro.util import set_seed
 from torch import nn
 from dowel import logger
+
+from garage.torch.optimizers import OptimizerWrapper
+from pyro.optim import ConjugateGradientOptimizer
 
 seeds = [373693, 943929, 675273, 79387, 508137, 557390, 756177, 155183, 262598,
          572185]
@@ -33,18 +35,16 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
          log_dir=None, snapshot_mode="gap", snapshot_gap=500, bound_type=LOWER,
-         src_filepath=None, discount=1., d=6, alpha=None, log_info=None,
-         tau=5e-3, pi_lr=3e-4, qf_lr=3e-4, buffer_capacity=int(1e6), ens_size=2,
-         M=2, minibatch_size=4096):
+         src_filepath=None, discount=1., d=6, log_info=None,
+         vf_lr=3e-4, minibatch_size=4096, entropy_method="no_entropy"):
     if log_info is None:
         log_info = []
 
     @wrap_experiment(log_dir=log_dir, snapshot_mode=snapshot_mode,
                      snapshot_gap=snapshot_gap)
-    def redq_ces(ctxt=None, n_parallel=1, budget=1, n_rl_itr=1,
-                n_cont_samples=10, seed=0, src_filepath=None, discount=1.,
-                d=6, alpha=None, tau=5e-3, pi_lr=3e-4, qf_lr=3e-4,
-                buffer_capacity=int(1e6), ens_size=2, M=2, minibatch_size=4096):
+    def trpo_ces(ctxt=None, n_parallel=1, budget=1, n_rl_itr=1,
+                 n_cont_samples=10, seed=0, src_filepath=None, discount=1.,
+                 d=6, vf_lr=3e-4, minibatch_size=4096, entropy_method="no_entropy"):
         
         if log_info:
             logger.log(str(log_info))
@@ -62,17 +62,7 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
             logger.log(f"loading data from {src_filepath}")
             data = joblib.load(src_filepath)
             env = data["env"]
-            redq = data["algo"]
-            if not hasattr(redq, "_sampler"):
-                redq._sampler = LocalSampler(agents=redq.policy, envs=env,
-                                            max_episode_length=budget,
-                                            worker_class=VectorWorker)
-            if not hasattr(redq, "replay_buffer"):
-                redq.replay_buffer = PathBuffer(
-                    capacity_in_transitions=buffer_capacity)
-            if alpha is not None:
-                redq._use_automatic_entropy_tuning = False
-                redq._fixed_alpha = alpha
+            trpo = data["algo"]
         else:
             logger.log("creating new policy")
             layer_size = 128
@@ -97,72 +87,80 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
                 return env
 
             def make_policy():
-                return AdaptiveTanhGaussianPolicy(
+                return AdaptiveGaussianMLPPolicy(
                     env_spec=env.spec,
                     encoder_sizes=[layer_size, layer_size],
-                    encoder_nonlinearity=nn.ReLU,
+                    encoder_nonlinearity=nn.Tanh,
                     encoder_output_nonlinearity=None,
                     emitter_sizes=[layer_size, layer_size],
-                    emitter_nonlinearity=nn.ReLU,
+                    emitter_nonlinearity=nn.Tanh,
                     emitter_output_nonlinearity=None,
-                    encoding_dim=layer_size//2,
+                    encoding_dim=layer_size // 2,
                     init_std=np.sqrt(1 / 3),
                     min_std=np.exp(-20.),
                     max_std=np.exp(0.),
                 )
 
-            def make_q_func():
-                return AdaptiveMLPQFunction(
+            def make_v_func():
+                return AdaptiveMLPValueFunction(
                     env_spec=env.spec,
                     encoder_sizes=[layer_size, layer_size],
-                    encoder_nonlinearity=nn.ReLU,
+                    encoder_nonlinearity=nn.Tanh,
                     encoder_output_nonlinearity=None,
                     emitter_sizes=[layer_size, layer_size],
-                    emitter_nonlinearity=nn.ReLU,
+                    emitter_nonlinearity=nn.Tanh,
                     emitter_output_nonlinearity=None,
-                    encoding_dim=layer_size//2
+                    encoding_dim=16
                 )
 
             env = make_env(design_space, obs_space, model, budget,
                            n_cont_samples, bound_type)
+            
             policy = make_policy()
-            qfs = [make_q_func() for _ in range(ens_size)]
-            replay_buffer = PathBuffer(capacity_in_transitions=buffer_capacity)
+            value_function = make_v_func()
+            
+            policy_optimizer = OptimizerWrapper(
+                (ConjugateGradientOptimizer, dict(max_constraint_value=0.01)),
+                policy,
+                minibatch_size=minibatch_size)
+            
+            vf_optimizer = OptimizerWrapper(
+                (torch.optim.Adam, dict(lr=vf_lr)),
+                value_function,
+                max_optimization_epochs=10,
+                minibatch_size=minibatch_size)
+
             sampler = LocalSampler(agents=policy, envs=env,
                                    max_episode_length=budget,
                                    worker_class=VectorWorker)
 
-            redq = REDQ(env_spec=env.spec,
-                      policy=policy,
-                      qfs=qfs,
-                      replay_buffer=replay_buffer,
-                      sampler=sampler,
-                      max_episode_length_eval=budget,
-                      gradient_steps_per_itr=64,
-                      min_buffer_size=int(1e5),
-                      target_update_tau=tau,
-                      policy_lr=pi_lr,
-                      qf_lr=qf_lr,
-                      discount=discount,
-                      discount_delta=0.,
-                      fixed_alpha=alpha,
-                      buffer_batch_size=minibatch_size,
-                      reward_scale=1.,
-                      M=M,
-                      ent_anneal_rate=1/1.4e4)
+            trpo = TRPO(env_spec=env.spec,
+                        policy=policy,
+                        value_function=value_function,
+                        sampler=sampler,
+                        max_episode_length=budget,
+                        policy_optimizer=policy_optimizer,
+                        vf_optimizer=vf_optimizer,
+                        num_train_per_epoch=1,
+                        discount=discount,
+                        gae_lambda=0.97,
+                        center_adv=False,
+                        positive_adv=False,
+                        policy_ent_coeff=0.01,
+                        use_softplus_entropy=False,
+                        stop_entropy_gradient=True,
+                        entropy_method=entropy_method)
 
-        redq.to()
         trainer = Trainer(snapshot_config=ctxt)
-        trainer.setup(algo=redq, env=env)
+        trainer.setup(algo=trpo, env=env)
         trainer.train(n_epochs=n_rl_itr, batch_size=n_parallel * budget)
 
-    redq_ces(n_parallel=n_parallel, budget=budget, n_rl_itr=n_rl_itr,
-            n_cont_samples=n_cont_samples, seed=seed,
-            src_filepath=src_filepath, discount=discount, d=d, alpha=alpha, tau=tau, pi_lr=pi_lr, qf_lr=qf_lr,
-            buffer_capacity=buffer_capacity, ens_size=ens_size, M=M, minibatch_size=minibatch_size)
+    trpo_ces(n_parallel=n_parallel, budget=budget, n_rl_itr=n_rl_itr,
+             n_cont_samples=n_cont_samples, seed=seed,
+             src_filepath=src_filepath, discount=discount,
+             d=d, vf_lr=vf_lr, minibatch_size=minibatch_size, entropy_method=entropy_method)
 
     logger.dump_all()
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
@@ -178,27 +176,20 @@ if __name__ == "__main__":
     parser.add_argument("--bound-type", default="terminal", type=str.lower,
                         choices=["lower", "upper", "terminal"])
     parser.add_argument("--discount", default="1", type=float)
-    parser.add_argument("--alpha", default="-1", type=float)
     parser.add_argument("--d", default="6", type=int)
-    parser.add_argument("--tau", default="5e-3", type=float)
-    parser.add_argument("--pi-lr", default="3e-4", type=float)
-    parser.add_argument("--qf-lr", default="3e-4", type=float)
-    parser.add_argument("--buffer-capacity", default="1e6", type=float)
-    parser.add_argument("--ens-size", default="2", type=int)
-    parser.add_argument("--M", default="2", type=int)
+    parser.add_argument("--vf-lr", default="3e-4", type=float)
     parser.add_argument("--minibatch-size", default="4096", type=int)
+    parser.add_argument("--entropy-method", default="regularized", type=str.lower,
+                        choices=["max", "regularized", "no_entropy"])
     args = parser.parse_args()
     bound_type_dict = {"lower": LOWER, "upper": UPPER, "terminal": TERMINAL}
     bound_type = bound_type_dict[args.bound_type]
     exp_id = args.id
-    alpha = args.alpha if args.alpha >= 0 else None
-    buff_cap = int(args.buffer_capacity)
     log_info = f"input params: {vars(args)}"
     main(n_parallel=args.n_parallel, budget=args.budget, n_rl_itr=args.n_rl_itr,
          n_cont_samples=args.n_contr_samples, seed=seeds[exp_id - 1],
          log_dir=args.log_dir, snapshot_mode=args.snapshot_mode,
          snapshot_gap=args.snapshot_gap, bound_type=bound_type,
-         src_filepath=args.src_filepath, discount=args.discount, alpha=alpha,
-         d=args.d, log_info=log_info, tau=args.tau, pi_lr=args.pi_lr,
-         qf_lr=args.qf_lr, buffer_capacity=buff_cap, ens_size=args.ens_size,
-         M=args.M, minibatch_size=args.minibatch_size)
+         src_filepath=args.src_filepath, discount=args.discount,
+         d=args.d, log_info=log_info,
+         vf_lr=args.vf_lr, minibatch_size=args.minibatch_size, entropy_method = args.entropy_method)

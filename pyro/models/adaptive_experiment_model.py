@@ -118,14 +118,19 @@ class CESModel(ExperimentModel):
             if is_bad(design):
                 raise ArithmeticError("bad design, contains nan or inf")
             batch_shape = design.shape[:-2]
+            print("design", design.shape)
+            print("batchshape", batch_shape)
             with ExitStack() as stack:
                 for plate in iter_plates_to_shape(batch_shape):
                     stack.enter_context(plate)
                 rho_shape = batch_shape + (self.rho_con_model.shape[-1],)
+                print("rhoshape", rho_shape)
                 rho = 0.01 + 0.99 * pyro.sample(
                     "rho",
                     dist.Dirichlet(self.rho_con_model.expand(rho_shape))
                 ).select(-1, 0)
+                print("rhomodelshape", self.rho_con_model.shape)
+                print("rho on its own shape", rho.shape)
                 alpha_shape = batch_shape + (self.alpha_con_model.shape[-1],)
                 alpha = pyro.sample(
                     "alpha",
@@ -138,15 +143,19 @@ class CESModel(ExperimentModel):
                         self.u_sig_model.expand(batch_shape)
                     )
                 )
+                print("u", u.shape)
                 rho = rexpand(rho, design.shape[-2])
+                print("rhoexpand", rho.shape)
                 u = rexpand(u, design.shape[-2])
+                print("uexpand.shape", u.shape)
+                print("rho.unsqueeze(-1)", rho.unsqueeze(-1).shape)
                 d1, d2 = design[..., 0:3], design[..., 3:6]
                 u1rho = (rmv(d1.pow(rho.unsqueeze(-1)), alpha)).pow(1. / rho)
                 u2rho = (rmv(d2.pow(rho.unsqueeze(-1)), alpha)).pow(1. / rho)
                 mean = u * (u1rho - u2rho)
                 sd = u * self.obs_sd * (
                         1 + torch.norm(d1 - d2, dim=-1, p=2))
-
+                print("m,sd", mean.shape, sd.shape)
                 emission_dist = dist.CensoredSigmoidNormal(
                     mean, sd, 1 - self.epsilon, self.epsilon
                 ).to_event(1)
@@ -286,6 +295,7 @@ class SourceModel(ExperimentModel):
                         self.theta_sig.expand(theta_shape)
                     ).to_event(2)
                 )
+                print(theta)
                 distance = torch.square(theta - design).sum(dim=-1)
                 ratio = self.alpha / (self.m + distance)
                 mu = self.b + ratio.sum(dim=-1, keepdims=True)
@@ -302,3 +312,110 @@ class SourceModel(ExperimentModel):
         self.theta_mu = torch.zeros(n_parallel, 1, self.k, self.d)
         self.theta_sig = torch.ones(n_parallel, 1, self.k, self.d)
         self.alpha = torch.ones(n_parallel, 1, self.k)
+
+###################
+
+def sigmoid(x, top, bottom, ee50, slope):
+    #return (top - bottom) * torch.sigmoid((x - ee50) * slope) + bottom
+    return torch.sigmoid((x - ee50))
+
+class DockingModel(ExperimentModel):
+    def __init__(self, n_parallel, d=100, top_prior_con=None, bottom_prior_con=None, ee50_prior_mu=None, ee50_prior_sd=None, slope_prior_mu=None,
+            slope_prior_sd=None, obs_label="y"):
+        super().__init__()
+        #self.top_prior_con = top_prior_con if top_prior_con is not None \
+        #    else torch.tensor([25., 75.])
+        #self.bottom_prior_con = bottom_prior_con if bottom_prior_con is not None \
+        #    else torch.tensor([4., 96.])
+        
+        #top_prior_con = torch.tensor([25., 75.])
+        #bottom_prior_con = torch.tensor([4., 96.])
+        #ee50_prior_mu, ee50_prior_sd = torch.tensor(-50.), torch.tensor(15.)
+        #slope_prior_mu, slope_prior_sd = torch.tensor(-0.15), torch.tensor(0.1)
+
+        top_prior_con_1 = 25. * torch.ones(n_parallel, 1)
+        top_prior_con_2 = 75. * torch.ones(n_parallel, 1)
+        bottom_prior_con_1 = 4. * torch.ones(n_parallel, 1)
+        bottom_prior_con_2 = 96. * torch.ones(n_parallel, 1)
+
+        top_prior_con = torch.ones(n_parallel, 1, 2)
+        top_prior_con[..., 0] = 25
+        top_prior_con[..., 1] = 75
+
+        bottom_prior_con = torch.ones(n_parallel, 1, 2)
+        bottom_prior_con[..., 0] = 25
+        bottom_prior_con[..., 1] = 75
+
+        ee50_prior_mu, ee50_prior_sd = -50. * torch.ones(n_parallel, 1), 15. * torch.ones(n_parallel, 1)
+        slope_prior_mu, slope_prior_sd = -0.15 * torch.ones(n_parallel, 1), 0.1 * torch.ones(n_parallel, 1)
+
+        self.top_prior_con = top_prior_con
+        self.bottom_prior_con = bottom_prior_con
+        self.ee50_prior_mu = ee50_prior_mu
+        self.ee50_prior_sd = ee50_prior_sd
+        self.slope_prior_mu = slope_prior_mu
+        self.slope_prior_sd = slope_prior_sd
+        self.obs_label = obs_label
+        self.n_parallel = n_parallel
+        self.var_names = ["top", "bottom", "ee50", "slope"]
+        self.var_dim = d
+        self.sanity_check()
+
+    def make_model(self):
+        def model(design):
+            if is_bad(design):
+                raise ArithmeticError("bad design, contains nan or inf")
+            batch_shape = design.shape[:-2]
+            print("batchshape", batch_shape)
+            with ExitStack() as stack:
+                for plate in iter_plates_to_shape(batch_shape):
+                    stack.enter_context(plate)
+                top_shape = batch_shape + (self.top_prior_con.shape[-1],)
+                top = pyro.sample("top", dist.Dirichlet(self.top_prior_con.expand(top_shape))).select(-1, 0)
+                print("self.top_prior_con", self.top_prior_con.shape)
+                bottom_shape = batch_shape + (self.bottom_prior_con.shape[-1],)
+                bottom = pyro.sample("bottom", dist.Dirichlet(self.bottom_prior_con.expand(bottom_shape))).select(-1, 0)
+                print("self.bottom_prior_con", self.bottom_prior_con.shape)
+                ee50_shape = batch_shape + self.ee50_prior_mu.shape[-1:]
+                ee50 = pyro.sample("ee50", dist.Normal(self.ee50_prior_mu.expand(batch_shape), self.ee50_prior_sd.expand(batch_shape)))
+                print("self.ee50_prior_mu", self.ee50_prior_mu.shape)
+                slope_shape = batch_shape + self.slope_prior_mu.shape[-1:]
+                slope = pyro.sample("slope", dist.Normal(self.slope_prior_mu.expand(batch_shape), self.slope_prior_sd.expand(batch_shape)))
+                print("self.slope_prior_mu", self.slope_prior_mu.shape)
+                print("topshape", top_shape, "bottomshape", bottom_shape, "ee50shape", ee50_shape, "slopeshape", slope_shape)
+                print("des", design.shape, "top", top.shape, "bottom", bottom.shape, "ee50", ee50.shape, "slope", slope.shape)
+                top = rexpand(top, design.shape[-2])
+                bottom = rexpand(bottom, design.shape[-2])
+                ee50 = rexpand(ee50, design.shape[-2])
+                slope = rexpand(slope, design.shape[-2])
+                print("topexpand", top.shape)
+                print("bottomexpand", bottom.shape)
+                print("ee50expand", ee50.shape)
+                print("slopeexpand", slope.shape)
+                top = top.unsqueeze(-1)
+                bottom = bottom.unsqueeze(-1)
+                ee50 = ee50.unsqueeze(-1)
+                slope = slope.unsqueeze(-1)
+                hit_rate = sigmoid(design, top, bottom, ee50, slope)
+                print(hit_rate, hit_rate.shape)
+                y = pyro.sample(self.obs_label, dist.Bernoulli(hit_rate).to_event(1))
+                return y
+
+        return model
+
+    def reset(self, n_parallel=None):
+        if n_parallel is not None:
+            self.n_parallel = n_parallel
+            self.top_prior_con = torch.ones(n_parallel, 1, 2)
+            self.top_prior_con[..., 0] = 25
+            self.top_prior_con[..., 1] = 75
+
+            self.bottom_prior_con = torch.ones(n_parallel, 1, 2)
+            self.bottom_prior_con[..., 0] = 25
+            self.bottom_prior_con[..., 1] = 75
+
+            self.ee50_prior_mu, self.ee50_prior_sd = -50. * torch.ones(n_parallel, 1), 15. * torch.ones(n_parallel, 1)
+            self.slope_prior_mu, self.slope_prior_sd = -0.15 * torch.ones(n_parallel, 1), 0.1 * torch.ones(n_parallel, 1)
+
+
+    

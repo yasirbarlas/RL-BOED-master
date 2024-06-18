@@ -10,7 +10,6 @@ import numpy as np
 
 #from garage.experiment import deterministic
 #from garage.torch import set_gpu_mode
-#from os import environ
 from pyro import wrap_experiment, set_rng_seed
 from pyro.algos import SBR
 from pyro.envs import AdaptiveDesignEnv, GymEnv, normalize
@@ -30,9 +29,11 @@ from dowel import logger
 seeds = [373693, 943929, 675273, 79387, 508137, 557390, 756177, 155183, 262598,
          572185]
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
 def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
          log_dir=None, snapshot_mode="gap", snapshot_gap=500, bound_type=LOWER,
-         src_filepath=None, discount=1., alpha=None, k=2, d=2, log_info=None,
+         src_filepath=None, discount=1., d=6, alpha=None, log_info=None,
          tau=5e-3, pi_lr=3e-4, qf_lr=3e-4, buffer_capacity=int(1e6), ens_size=2,
          M=2, minibatch_size=4096, reset_interval=256000, resets=True):
     if log_info is None:
@@ -42,14 +43,15 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
                      snapshot_gap=snapshot_gap)
     def sbr_ces(ctxt=None, n_parallel=1, budget=1, n_rl_itr=1,
                 n_cont_samples=10, seed=0, src_filepath=None, discount=1.,
-                alpha=None, k=2, d=2, tau=5e-3, pi_lr=3e-4, qf_lr=3e-4,
+                d=6, alpha=None, tau=5e-3, pi_lr=3e-4, qf_lr=3e-4,
                 buffer_capacity=int(1e6), ens_size=2, M=2,
                 minibatch_size=4096, reset_interval=256000, resets=True):
+        
         if log_info:
             logger.log(str(log_info))
 
         if torch.cuda.is_available():
-            torch.set_default_tensor_type("torch.cuda.FloatTensor")
+            torch.set_default_device(device)
             logger.log("GPU available")
         else:
             logger.log("No GPU detected")
@@ -75,9 +77,9 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
         else:
             logger.log("creating new policy")
             layer_size = 128
-            design_space = BatchBox(low=0.01, high=100, shape=(1, 1, 1, 6))
-            obs_space = BatchBox(low=torch.zeros((7,)),
-                                 high=torch.as_tensor([100.] * 6 + [1.])
+            design_space = BatchBox(low=0.01, high=100, shape=(1, 1, 1, d))
+            obs_space = BatchBox(low=torch.zeros((d+1,)),
+                                 high=torch.as_tensor([100.] * d + [1.])
                                  )
             model = CESModel(n_parallel=n_parallel, n_elbo_steps=1000,
                              n_elbo_samples=10)
@@ -159,8 +161,7 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
 
     sbr_ces(n_parallel=n_parallel, budget=budget, n_rl_itr=n_rl_itr,
             n_cont_samples=n_cont_samples, seed=seed,
-            src_filepath=src_filepath, discount=discount, alpha=alpha, k=k,
-            d=d, tau=tau, pi_lr=pi_lr, qf_lr=qf_lr,
+            src_filepath=src_filepath, discount=discount, d=d, alpha=alpha, tau=tau, pi_lr=pi_lr, qf_lr=qf_lr,
             buffer_capacity=buffer_capacity, ens_size=ens_size, M=M, 
             minibatch_size=minibatch_size, reset_interval=reset_interval, resets=resets)
 
@@ -182,8 +183,7 @@ if __name__ == "__main__":
                         choices=["lower", "upper", "terminal"])
     parser.add_argument("--discount", default="1", type=float)
     parser.add_argument("--alpha", default="-1", type=float)
-    parser.add_argument("--d", default="2", type=int)
-    parser.add_argument("--k", default="2", type=int)
+    parser.add_argument("--d", default="6", type=int)
     parser.add_argument("--tau", default="5e-3", type=float)
     parser.add_argument("--pi-lr", default="3e-4", type=float)
     parser.add_argument("--qf-lr", default="3e-4", type=float)
@@ -205,6 +205,6 @@ if __name__ == "__main__":
          log_dir=args.log_dir, snapshot_mode=args.snapshot_mode,
          snapshot_gap=args.snapshot_gap, bound_type=bound_type,
          src_filepath=args.src_filepath, discount=args.discount, alpha=alpha,
-         k=args.k, d=args.d, log_info=log_info, tau=args.tau, pi_lr=args.pi_lr,
+         d=args.d, log_info=log_info, tau=args.tau, pi_lr=args.pi_lr,
          qf_lr=args.qf_lr, buffer_capacity=buff_cap, ens_size=args.ens_size,
          M=args.M, minibatch_size=args.minibatch_size, reset_interval=args.reset_interval, resets=args.resets)
