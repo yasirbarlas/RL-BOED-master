@@ -1,6 +1,5 @@
 """
-Use SAC to learn an agent that adaptively designs constant elasticity of
-substitution experiments
+Use Scaled-By-Resetting to learn an agent that adaptively designs docking experiments
 """
 import argparse
 
@@ -8,79 +7,80 @@ import joblib
 import torch
 import numpy as np
 
-from garage.experiment import deterministic
-from garage.torch import set_gpu_mode
-from os import environ
+#from garage.experiment import deterministic
+#from garage.torch import set_gpu_mode
 from pyro import wrap_experiment, set_rng_seed
-from pyro.algos import SAC
+from pyro.algos import SBR
 from pyro.envs import AdaptiveDesignEnv, GymEnv, normalize
 from pyro.envs.adaptive_design_env import LOWER, UPPER, TERMINAL
 from pyro.experiment import Trainer
-from pyro.models.adaptive_experiment_model import CESModel
-from pyro.policies.adaptive_tanh_gaussian_policy import \
-    AdaptiveTanhGaussianPolicy
+from pyro.models.adaptive_experiment_model import DockingModel
+from pyro.policies import AdaptiveTanhGaussianPolicy
 from pyro.q_functions.adaptive_mlp_q_function import AdaptiveMLPQFunction
 from pyro.replay_buffer import PathBuffer
 from pyro.sampler.local_sampler import LocalSampler
 from pyro.sampler.vector_worker import VectorWorker
 from pyro.spaces.batch_box import BatchBox
+from pyro.util import set_seed
 from torch import nn
 from dowel import logger
 
 seeds = [373693, 943929, 675273, 79387, 508137, 557390, 756177, 155183, 262598,
          572185]
 
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
-         log_dir=None, snapshot_mode='gap', snapshot_gap=500, bound_type=LOWER,
-         src_filepath=None, discount=1., alpha=None, k=2, d=2, log_info=None,
+         log_dir=None, snapshot_mode="gap", snapshot_gap=500, bound_type=LOWER,
+         src_filepath=None, discount=1., d=100, alpha=None, log_info=None,
          tau=5e-3, pi_lr=3e-4, qf_lr=3e-4, buffer_capacity=int(1e6), ens_size=2,
-         M=2):
+         M=2, minibatch_size=4096, reset_interval=256000, resets=True):
     if log_info is None:
         log_info = []
 
     @wrap_experiment(log_dir=log_dir, snapshot_mode=snapshot_mode,
                      snapshot_gap=snapshot_gap)
-    def sac_ces(ctxt=None, n_parallel=1, budget=1, n_rl_itr=1,
+    def sbr_docking(ctxt=None, n_parallel=1, budget=1, n_rl_itr=1,
                 n_cont_samples=10, seed=0, src_filepath=None, discount=1.,
-                alpha=None, k=2, d=2, tau=5e-3, pi_lr=3e-4, qf_lr=3e-4,
-                buffer_capacity=int(1e6), ens_size=2, M=2):
+                d=100, alpha=None, tau=5e-3, pi_lr=3e-4, qf_lr=3e-4,
+                buffer_capacity=int(1e6), ens_size=2, M=2,
+                minibatch_size=4096, reset_interval=256000, resets=True):
+        
         if log_info:
             logger.log(str(log_info))
+
         if torch.cuda.is_available():
-            set_gpu_mode(True, int(environ['CUDA_VISIBLE_DEVICES']))
-            torch.set_default_tensor_type('torch.cuda.FloatTensor')
+            torch.set_default_device(device)
             logger.log("GPU available")
         else:
-            set_gpu_mode(False)
-            logger.log("no GPU detected")
-        deterministic.set_seed(seed)
+            logger.log("No GPU detected")
+
+        set_seed(seed)
         set_rng_seed(seed)
         # if there is a saved agent to load
         if src_filepath:
             logger.log(f"loading data from {src_filepath}")
             data = joblib.load(src_filepath)
-            env = data['env']
-            sac = data['algo']
-            if not hasattr(sac, '_sampler'):
-                sac._sampler = LocalSampler(agents=sac.policy, envs=env,
+            env = data["env"]
+            sbr = data["algo"]
+            if not hasattr(sbr, "_sampler"):
+                sbr._sampler = LocalSampler(agents=sbr.policy, envs=env,
                                             max_episode_length=budget,
                                             worker_class=VectorWorker)
-            if not hasattr(sac, 'replay_buffer'):
-                sac.replay_buffer = PathBuffer(
+            if not hasattr(sbr, "replay_buffer"):
+                sbr.replay_buffer = PathBuffer(
                     capacity_in_transitions=buffer_capacity)
             if alpha is not None:
-                sac._use_automatic_entropy_tuning = False
-                sac._fixed_alpha = alpha
+                sbr._use_automatic_entropy_tuning = False
+                sbr._fixed_alpha = alpha
         else:
             logger.log("creating new policy")
             layer_size = 128
-            design_space = BatchBox(low=0.01, high=100, shape=(1, 1, 1, 6))
-            obs_space = BatchBox(low=torch.zeros((7,)),
-                                 high=torch.as_tensor([100.] * 6 + [1.])
+            design_space = BatchBox(low=-75., high=0., shape=(1, 1, 1, d))
+            obs_space = BatchBox(low=torch.as_tensor([-75.] * 2 * d),
+                                 high=torch.as_tensor([1.] * 2 * d)
                                  )
-            model = CESModel(n_parallel=n_parallel, n_elbo_steps=1000,
-                             n_elbo_samples=10)
+            model = DockingModel(n_parallel=n_parallel, d=d)
 
             def make_env(design_space, obs_space, model, budget, n_cont_samples,
                          bound_type, true_model=None):
@@ -131,7 +131,7 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
                                    max_episode_length=budget,
                                    worker_class=VectorWorker)
 
-            sac = SAC(env_spec=env.spec,
+            sbr = SBR(env_spec=env.spec,
                       policy=policy,
                       qfs=qfs,
                       replay_buffer=replay_buffer,
@@ -145,21 +145,23 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
                       discount=discount,
                       discount_delta=0.,
                       fixed_alpha=alpha,
-                      buffer_batch_size=4096,
+                      buffer_batch_size=minibatch_size,
                       reward_scale=1.,
                       M=M,
-                      ent_anneal_rate=1/1.4e4)
+                      ent_anneal_rate=1/1.4e4,
+                      reset_interval=reset_interval,
+                      resets=resets)
 
-        sac.to()
+        sbr.to()
         trainer = Trainer(snapshot_config=ctxt)
-        trainer.setup(algo=sac, env=env)
+        trainer.setup(algo=sbr, env=env)
         trainer.train(n_epochs=n_rl_itr, batch_size=n_parallel * budget)
 
-    sac_ces(n_parallel=n_parallel, budget=budget, n_rl_itr=n_rl_itr,
+    sbr_docking(n_parallel=n_parallel, budget=budget, n_rl_itr=n_rl_itr,
             n_cont_samples=n_cont_samples, seed=seed,
-            src_filepath=src_filepath, discount=discount, alpha=alpha, k=k,
-            d=d, tau=tau, pi_lr=pi_lr, qf_lr=qf_lr,
-            buffer_capacity=buffer_capacity, ens_size=ens_size, M=M)
+            src_filepath=src_filepath, discount=discount, d=d, alpha=alpha, tau=tau, pi_lr=pi_lr, qf_lr=qf_lr,
+            buffer_capacity=buffer_capacity, ens_size=ens_size, M=M, 
+            minibatch_size=minibatch_size, reset_interval=reset_interval, resets=resets)
 
     logger.dump_all()
 
@@ -179,14 +181,16 @@ if __name__ == "__main__":
                         choices=["lower", "upper", "terminal"])
     parser.add_argument("--discount", default="1", type=float)
     parser.add_argument("--alpha", default="-1", type=float)
-    parser.add_argument("--d", default="2", type=int)
-    parser.add_argument("--k", default="2", type=int)
+    parser.add_argument("--d", default="6", type=int)
     parser.add_argument("--tau", default="5e-3", type=float)
     parser.add_argument("--pi-lr", default="3e-4", type=float)
     parser.add_argument("--qf-lr", default="3e-4", type=float)
     parser.add_argument("--buffer-capacity", default="1e6", type=float)
     parser.add_argument("--ens-size", default="2", type=int)
     parser.add_argument("--M", default="2", type=int)
+    parser.add_argument("--minibatch-size", default="4096", type=int)
+    parser.add_argument("--reset_interval", default="128", type=int)
+    parser.add_argument("--resets", default=True, type=bool)
     args = parser.parse_args()
     bound_type_dict = {"lower": LOWER, "upper": UPPER, "terminal": TERMINAL}
     bound_type = bound_type_dict[args.bound_type]
@@ -199,6 +203,6 @@ if __name__ == "__main__":
          log_dir=args.log_dir, snapshot_mode=args.snapshot_mode,
          snapshot_gap=args.snapshot_gap, bound_type=bound_type,
          src_filepath=args.src_filepath, discount=args.discount, alpha=alpha,
-         k=args.k, d=args.d, log_info=log_info, tau=args.tau, pi_lr=args.pi_lr,
+         d=args.d, log_info=log_info, tau=args.tau, pi_lr=args.pi_lr,
          qf_lr=args.qf_lr, buffer_capacity=buff_cap, ens_size=args.ens_size,
-         M=args.M)
+         M=args.M, minibatch_size=args.minibatch_size, reset_interval=args.reset_interval, resets=args.resets)

@@ -61,12 +61,17 @@ class AdaptiveDesignEnv(Env):
         design = torch.as_tensor(action)
         # y = self.true_model(design)
         y = self.model.run_experiment(design, self.theta0)
+        #print("1esfsfe", y.shape)
         self.history.append(
             torch.cat(
                 [design.squeeze(dim=-2).squeeze(dim=-2), y.squeeze(dim=-2)],
                 dim=-1
             )
         )
+        #print("sdgsgdrii", torch.cat(
+        #        [design.squeeze(dim=-2).squeeze(dim=-2), y.squeeze(dim=-2)],
+        #        dim=-1
+        #    ).shape)
         obs = self.get_obs()
         reward = self.get_reward(y, design)
         done = self.terminal()
@@ -75,6 +80,7 @@ class AdaptiveDesignEnv(Env):
         return obs, reward, done, info
 
     def get_obs(self):
+        #print("self.observation_space.shape[-1]", self.observation_space.shape[-1])
         if self.history:
             return torch.stack(self.history, dim=-2)
         else:

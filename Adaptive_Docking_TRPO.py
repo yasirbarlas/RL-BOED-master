@@ -1,6 +1,5 @@
 """
-Use Proximal Policy Optimisation to learn an agent that adaptively designs constant elasticity of
-substitution experiments
+Use Trust Region Policy Optimisation to learn an agent that adaptively designs docking experiments
 """
 import argparse
 
@@ -11,11 +10,11 @@ import numpy as np
 #from garage.experiment import deterministic
 #from garage.torch import set_gpu_mode
 from pyro import wrap_experiment, set_rng_seed
-from pyro.algos import PPO
+from pyro.algos import TRPO
 from pyro.envs import AdaptiveDesignEnv, GymEnv, normalize
 from pyro.envs.adaptive_design_env import LOWER, UPPER, TERMINAL
 from pyro.experiment import Trainer
-from pyro.models.adaptive_experiment_model import CESModel
+from pyro.models.adaptive_experiment_model import DockingModel
 from pyro.policies import AdaptiveGaussianMLPPolicy
 from pyro.value_functions import AdaptiveMLPValueFunction
 from pyro.sampler.local_sampler import LocalSampler
@@ -26,6 +25,7 @@ from torch import nn
 from dowel import logger
 
 from garage.torch.optimizers import OptimizerWrapper
+from pyro.optim import ConjugateGradientOptimizer
 
 seeds = [373693, 943929, 675273, 79387, 508137, 557390, 756177, 155183, 262598,
          572185]
@@ -35,8 +35,8 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
          log_dir=None, snapshot_mode="gap", snapshot_gap=500, bound_type=LOWER,
          src_filepath=None, discount=1., d=6, log_info=None,
-         pi_lr=3e-4, vf_lr=3e-4, minibatch_size=4096, entropy_method="no_entropy",
-         lr_clip_range=0.2, gae_lambda=0.97, policy_ent_coeff=0.01,
+         vf_lr=3e-4, minibatch_size=4096, entropy_method="no_entropy",
+         gae_lambda=0.97, policy_ent_coeff=0.01,
          center_adv=True, positive_adv=False, use_softplus_entropy=False,
          stop_entropy_gradient=False):
     if log_info is None:
@@ -44,10 +44,10 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
 
     @wrap_experiment(log_dir=log_dir, snapshot_mode=snapshot_mode,
                      snapshot_gap=snapshot_gap)
-    def ppo_ces(ctxt=None, n_parallel=1, budget=1, n_rl_itr=1,
+    def trpo_docking(ctxt=None, n_parallel=1, budget=1, n_rl_itr=1,
                    n_cont_samples=10, seed=0, src_filepath=None, discount=1.,
-                   d=6, pi_lr=3e-4, vf_lr=3e-4, minibatch_size=4096, entropy_method="no_entropy",
-                   lr_clip_range=0.2, gae_lambda=0.97, policy_ent_coeff=0.01,
+                   d=6, vf_lr=3e-4, minibatch_size=4096, entropy_method="no_entropy",
+                   gae_lambda=0.97, policy_ent_coeff=0.01,
                    center_adv=True, positive_adv=False, use_softplus_entropy=False,
                    stop_entropy_gradient=False):
         
@@ -67,16 +67,15 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
             logger.log(f"loading data from {src_filepath}")
             data = joblib.load(src_filepath)
             env = data["env"]
-            ppo = data["algo"]
+            trpo = data["algo"]
         else:
             logger.log("creating new policy")
             layer_size = 128
-            design_space = BatchBox(low=0.01, high=100, shape=(1, 1, 1, d))
-            obs_space = BatchBox(low=torch.zeros((d+1,)),
-                                 high=torch.as_tensor([100.] * d + [1.])
+            design_space = BatchBox(low=-75., high=0., shape=(1, 1, 1, d))
+            obs_space = BatchBox(low=torch.as_tensor([-75.] * 2 * d),
+                                 high=torch.as_tensor([1.] * 2 * d)
                                  )
-            model = CESModel(n_parallel=n_parallel, n_elbo_steps=1000,
-                             n_elbo_samples=10)
+            model = DockingModel(n_parallel=n_parallel, d=d)
 
             def make_env(design_space, obs_space, model, budget, n_cont_samples,
                          bound_type, true_model=None):
@@ -125,9 +124,8 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
             value_function = make_v_func()
             
             policy_optimizer = OptimizerWrapper(
-                (torch.optim.Adam, dict(lr=pi_lr)),
+                (ConjugateGradientOptimizer, dict(max_constraint_value=0.01)),
                 policy,
-                max_optimization_epochs=10,
                 minibatch_size=minibatch_size)
             
             vf_optimizer = OptimizerWrapper(
@@ -140,7 +138,7 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
                                    max_episode_length=budget,
                                    worker_class=VectorWorker)
 
-            ppo = PPO(env_spec=env.spec,
+            trpo = TRPO(env_spec=env.spec,
                       policy=policy,
                       value_function=value_function,
                       sampler=sampler,
@@ -148,7 +146,6 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
                       policy_optimizer=policy_optimizer,
                       vf_optimizer=vf_optimizer,
                       num_train_per_epoch=1,
-                      lr_clip_range=lr_clip_range,
                       discount=discount,
                       gae_lambda=gae_lambda,
                       center_adv=center_adv,
@@ -159,14 +156,14 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
                       entropy_method=entropy_method)
                       
         trainer = Trainer(snapshot_config=ctxt)
-        trainer.setup(algo=ppo, env=env)
+        trainer.setup(algo=trpo, env=env)
         trainer.train(n_epochs=n_rl_itr, batch_size=n_parallel * budget)
 
-    ppo_ces(n_parallel=n_parallel, budget=budget, n_rl_itr=n_rl_itr,
+    trpo_docking(n_parallel=n_parallel, budget=budget, n_rl_itr=n_rl_itr,
                n_cont_samples=n_cont_samples, seed=seed,
                src_filepath=src_filepath, discount=discount,
-               d=d, pi_lr=pi_lr, vf_lr=vf_lr, minibatch_size=minibatch_size, entropy_method=entropy_method,
-               lr_clip_range=lr_clip_range, gae_lambda=gae_lambda, policy_ent_coeff=policy_ent_coeff,
+               d=d, vf_lr=vf_lr, minibatch_size=minibatch_size, entropy_method=entropy_method,
+               gae_lambda=gae_lambda, policy_ent_coeff=policy_ent_coeff,
                center_adv=center_adv, positive_adv=positive_adv, use_softplus_entropy=use_softplus_entropy,
                stop_entropy_gradient=stop_entropy_gradient)
 
@@ -198,12 +195,10 @@ if __name__ == "__main__":
                         choices=["lower", "upper", "terminal"])
     parser.add_argument("--discount", default="0.99", type=float)
     parser.add_argument("--d", default="6", type=int)
-    parser.add_argument("--pi-lr", default="3e-4", type=float)
     parser.add_argument("--vf-lr", default="3e-4", type=float)
     parser.add_argument("--minibatch-size", default="4096", type=int)
     parser.add_argument("--entropy-method", default="no_entropy", type=str.lower,
                         choices=["max", "regularized", "no_entropy"])
-    parser.add_argument("--lr_clip_range", default="0.2", type=float)
     parser.add_argument("--gae_lambda", default="0.97", type=float)
     parser.add_argument("--policy_ent_coeff", default="0.00", type=float)
     parser.add_argument("--center_adv", default=False, type=str2bool)
@@ -221,8 +216,8 @@ if __name__ == "__main__":
          log_dir=args.log_dir, snapshot_mode=args.snapshot_mode,
          snapshot_gap=args.snapshot_gap, bound_type=bound_type,
          src_filepath=args.src_filepath, discount=args.discount,
-         d=args.d, log_info=log_info, pi_lr=args.pi_lr,
+         d=args.d, log_info=log_info,
          vf_lr=args.vf_lr, minibatch_size=args.minibatch_size, entropy_method = args.entropy_method, 
-         lr_clip_range=args.lr_clip_range, gae_lambda=args.gae_lambda, policy_ent_coeff=args.policy_ent_coeff,
+         gae_lambda=args.gae_lambda, policy_ent_coeff=args.policy_ent_coeff,
          center_adv=args.center_adv, positive_adv=args.positive_adv, use_softplus_entropy=args.use_softplus_entropy,
          stop_entropy_gradient=args.stop_entropy_gradient)

@@ -1,17 +1,15 @@
 """
-Use DDQN to learn an agent that adaptively designs prey population experiments
+Use REM to learn an agent that adaptively designs prey population experiments
 """
 import argparse
 
 import joblib
 import torch
-import pyro
 
-from dowel import logger
-from garage.experiment import deterministic
-from garage.torch import set_gpu_mode
-from pyro import wrap_experiment
-from pyro.algos import DQN
+#from garage.experiment import deterministic
+#from garage.torch import set_gpu_mode
+from pyro import wrap_experiment, set_rng_seed
+from pyro.algos import REM
 from pyro.envs import AdaptiveDesignEnv, GymEnv, normalize
 from pyro.envs.adaptive_design_env import LOWER, UPPER, TERMINAL
 from pyro.experiment import Trainer
@@ -23,38 +21,40 @@ from pyro.sampler.local_sampler import LocalSampler
 from pyro.sampler.vector_worker import VectorWorker
 from pyro.spaces.batch_box import BatchBox
 from pyro.spaces.batch_discrete import BatchDiscrete
+from pyro.util import set_seed
 from torch import nn
+from dowel import logger
 
 seeds = [373693, 943929, 675273, 79387, 508137, 557390, 756177, 155183, 262598,
          572185]
 
-
 def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
          log_dir=None, snapshot_mode='gap', snapshot_gap=500, bound_type=LOWER,
          src_filepath=None, discount=1., buffer_capacity=int(1e6), qf_lr=1e-3,
-         update_freq=5, tau=None):
+         update_freq=5, tau=None, ens_size=2, deep_exp=False):
     @wrap_experiment(log_dir=log_dir, snapshot_mode=snapshot_mode,
                      snapshot_gap=snapshot_gap)
-    def dqn_prey(ctxt=None, n_parallel=1, budget=1, n_rl_itr=1,
+    def rem_prey(ctxt=None, n_parallel=1, budget=1, n_rl_itr=1,
                  n_cont_samples=10, seed=0, src_filepath=None,
                  discount=1., buffer_capacity=int(1e6), qf_lr=1e-3,
-                 update_freq=5, tau=None,):
+                 update_freq=5, tau=None, ens_size=2, deep_exp=False):
         if log_info:
             logger.log(str(log_info))
+
         if torch.cuda.is_available():
-            set_gpu_mode(True)
-            torch.set_default_tensor_type('torch.cuda.FloatTensor')
-            print("\nGPU available\n")
+            torch.set_default_tensor_type("torch.cuda.FloatTensor")
+            logger.log("GPU available")
         else:
-            set_gpu_mode(False)
-            print("\nno GPU detected\n")
-        deterministic.set_seed(seed)
-        pyro.set_rng_seed(seed)
+            logger.log("No GPU detected")
+
+        set_seed(seed)
+        set_rng_seed(seed)
+        # if there is a saved agent to load
         if src_filepath:
             print(f"loading data from {src_filepath}")
             data = joblib.load(src_filepath)
             env = data['env']
-            dqn = data['algo']
+            rem = data['algo']
         else:
             print("creating new policy")
             layer_size = 128
@@ -76,10 +76,11 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
                 )
                 return env
 
-            def make_policy(qf):
+            def make_policy(qfs):
                 return AdaptiveArgmaxPolicy(
                     env_spec=env.spec,
-                    qf=qf
+                    qfs=qfs,
+                    deep_exp=deep_exp
                 )
 
             def make_q_func():
@@ -96,8 +97,8 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
 
             env = make_env(design_space, obs_space, model, budget,
                            n_cont_samples, bound_type)
-            qf = make_q_func()
-            policy = make_policy(qf)
+            qfs = [make_q_func() for _ in range(ens_size)]
+            policy = make_policy(qfs)
             exploration_policy = EpsilonGreedyPolicy(
                 env_spec=env.spec,
                 policy=policy,
@@ -111,10 +112,9 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
                                    max_episode_length=budget,
                                    worker_class=VectorWorker)
 
-            dqn = DQN(env_spec=env.spec,
+            rem = REM(env_spec=env.spec,
                       policy=policy,
-                      qf=qf,
-                      double_q=True,
+                      qfs=qfs,
                       replay_buffer=replay_buffer,
                       sampler=sampler,
                       exploration_policy=exploration_policy,
@@ -128,15 +128,16 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
                       qf_lr=qf_lr,
                       tau=tau)
 
-        dqn.to()
+        rem.to()
         trainer = Trainer(snapshot_config=ctxt)
-        trainer.setup(algo=dqn, env=env)
+        trainer.setup(algo=rem, env=env)
         trainer.train(n_epochs=n_rl_itr, batch_size=n_parallel * budget)
 
-    dqn_prey(n_parallel=n_parallel, budget=budget, n_rl_itr=n_rl_itr,
+    rem_prey(n_parallel=n_parallel, budget=budget, n_rl_itr=n_rl_itr,
              n_cont_samples=n_cont_samples, seed=seed, qf_lr=qf_lr,
              src_filepath=src_filepath, discount=discount, tau=tau,
-             buffer_capacity=buffer_capacity, update_freq=update_freq)
+             buffer_capacity=buffer_capacity, update_freq=update_freq,
+             ens_size=ens_size, deep_exp=deep_exp)
 
 
 if __name__ == "__main__":
@@ -157,6 +158,8 @@ if __name__ == "__main__":
     parser.add_argument("--qf-lr", default="1e-3", type=float)
     parser.add_argument("--update-freq", default="5", type=int)
     parser.add_argument("--tau", default="-1", type=float)
+    parser.add_argument("--ens-size", default="2", type=int)
+    parser.add_argument("--deep-exp", action="store_true")
     args = parser.parse_args()
     bound_type_dict = {"lower": LOWER, "upper": UPPER, "terminal": TERMINAL}
     bound_type = bound_type_dict[args.bound_type]
@@ -169,7 +172,5 @@ if __name__ == "__main__":
          log_dir=args.log_dir, snapshot_mode=args.snapshot_mode,
          snapshot_gap=args.snapshot_gap, bound_type=bound_type,
          src_filepath=args.src_filepath, discount=args.discount,
-         buffer_capacity=buff_cap, qf_lr=args.qf_lr,
-         update_freq=args.update_freq, tau=tau)
-
-
+         buffer_capacity=buff_cap, qf_lr=args.qf_lr, deep_exp=args.deep_exp,
+         update_freq=args.update_freq, tau=tau, ens_size=args.ens_size)

@@ -11,7 +11,7 @@ from garage.experiment import deterministic
 from garage.torch import set_gpu_mode
 from os import environ
 from pyro import wrap_experiment, set_rng_seed
-from pyro.algos import SAC
+from pyro.algos import REDQ
 from pyro.envs import AdaptiveDesignEnv, GymEnv, normalize
 from pyro.envs.adaptive_design_env import LOWER, UPPER, TERMINAL
 from pyro.experiment import Trainer
@@ -133,7 +133,7 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
                                    max_episode_length=budget,
                                    worker_class=VectorWorker)
 
-            sac = SAC(env_spec=env.spec,
+            sac = REDQ(env_spec=env.spec,
                       policy=policy,
                       qfs=qfs,
                       replay_buffer=replay_buffer,

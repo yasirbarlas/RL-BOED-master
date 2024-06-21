@@ -78,8 +78,10 @@ class SBR(RLAlgorithm):
         M (int): in-target minimization parameter
         ent_anneal_rate (float): the rate at which to anneal the target entropy
             in each iteration of the algorithm.
-        reset_interval (int): -
-        resets (Bool): -
+        reset_interval (int): The interval used to reset the policy 
+            and Q-function parameters (only used if resets is True).
+        resets (Bool): If True, resets the policy and Q-function 
+            parameters every 'reset_interval' iterations.
 
     """
 

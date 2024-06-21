@@ -99,6 +99,8 @@ class NormalizedEnv(gym.Wrapper):
             torch.Tensor: Normalized observation.
         """
         lb, ub = self.observation_space.low, self.observation_space.high
+        #print("norm_obslb", obs.shape, lb.shape)
+        #print("norm_obsub", obs.shape, ub.shape)
         norm_obs = (obs - lb) / (ub - lb)
         return norm_obs
 

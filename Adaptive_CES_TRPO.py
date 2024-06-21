@@ -36,7 +36,10 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
          log_dir=None, snapshot_mode="gap", snapshot_gap=500, bound_type=LOWER,
          src_filepath=None, discount=1., d=6, log_info=None,
-         vf_lr=3e-4, minibatch_size=4096, entropy_method="no_entropy"):
+         vf_lr=3e-4, minibatch_size=4096, entropy_method="no_entropy",
+         gae_lambda=0.97, policy_ent_coeff=0.01,
+         center_adv=True, positive_adv=False, use_softplus_entropy=False,
+         stop_entropy_gradient=False):
     if log_info is None:
         log_info = []
 
@@ -44,7 +47,10 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
                      snapshot_gap=snapshot_gap)
     def trpo_ces(ctxt=None, n_parallel=1, budget=1, n_rl_itr=1,
                  n_cont_samples=10, seed=0, src_filepath=None, discount=1.,
-                 d=6, vf_lr=3e-4, minibatch_size=4096, entropy_method="no_entropy"):
+                 d=6, vf_lr=3e-4, minibatch_size=4096, entropy_method="no_entropy",
+                 gae_lambda=0.97, policy_ent_coeff=0.01,
+                 center_adv=True, positive_adv=False, use_softplus_entropy=False,
+                 stop_entropy_gradient=False):
         
         if log_info:
             logger.log(str(log_info))
@@ -135,34 +141,48 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
                                    worker_class=VectorWorker)
 
             trpo = TRPO(env_spec=env.spec,
-                        policy=policy,
-                        value_function=value_function,
-                        sampler=sampler,
-                        max_episode_length=budget,
-                        policy_optimizer=policy_optimizer,
-                        vf_optimizer=vf_optimizer,
-                        num_train_per_epoch=1,
-                        discount=discount,
-                        gae_lambda=0.97,
-                        center_adv=False,
-                        positive_adv=False,
-                        policy_ent_coeff=0.01,
-                        use_softplus_entropy=False,
-                        stop_entropy_gradient=True,
-                        entropy_method=entropy_method)
+                      policy=policy,
+                      value_function=value_function,
+                      sampler=sampler,
+                      max_episode_length=budget,
+                      policy_optimizer=policy_optimizer,
+                      vf_optimizer=vf_optimizer,
+                      num_train_per_epoch=1,
+                      discount=discount,
+                      gae_lambda=gae_lambda,
+                      center_adv=center_adv,
+                      positive_adv=positive_adv,
+                      policy_ent_coeff=policy_ent_coeff,
+                      use_softplus_entropy=use_softplus_entropy,
+                      stop_entropy_gradient=stop_entropy_gradient,
+                      entropy_method=entropy_method)
 
         trainer = Trainer(snapshot_config=ctxt)
         trainer.setup(algo=trpo, env=env)
         trainer.train(n_epochs=n_rl_itr, batch_size=n_parallel * budget)
 
     trpo_ces(n_parallel=n_parallel, budget=budget, n_rl_itr=n_rl_itr,
-             n_cont_samples=n_cont_samples, seed=seed,
-             src_filepath=src_filepath, discount=discount,
-             d=d, vf_lr=vf_lr, minibatch_size=minibatch_size, entropy_method=entropy_method)
+               n_cont_samples=n_cont_samples, seed=seed,
+               src_filepath=src_filepath, discount=discount,
+               d=d, vf_lr=vf_lr, minibatch_size=minibatch_size, entropy_method=entropy_method,
+               gae_lambda=gae_lambda, policy_ent_coeff=policy_ent_coeff,
+               center_adv=center_adv, positive_adv=positive_adv, use_softplus_entropy=use_softplus_entropy,
+               stop_entropy_gradient=stop_entropy_gradient)
 
     logger.dump_all()
 
 if __name__ == "__main__":
+
+    def str2bool(v):
+        if isinstance(v, bool):
+            return v
+        if v.lower() in ('yes', 'true', 't', 'y', '1'):
+            return True
+        elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+            return False
+        else:
+            raise argparse.ArgumentTypeError('Boolean value expected.')
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--id", default="1", type=int)
     parser.add_argument("--n-parallel", default="100", type=int)
@@ -175,12 +195,19 @@ if __name__ == "__main__":
     parser.add_argument("--snapshot-gap", default=500, type=int)
     parser.add_argument("--bound-type", default="terminal", type=str.lower,
                         choices=["lower", "upper", "terminal"])
-    parser.add_argument("--discount", default="1", type=float)
+    parser.add_argument("--discount", default="0.99", type=float)
     parser.add_argument("--d", default="6", type=int)
     parser.add_argument("--vf-lr", default="3e-4", type=float)
     parser.add_argument("--minibatch-size", default="4096", type=int)
-    parser.add_argument("--entropy-method", default="regularized", type=str.lower,
+    parser.add_argument("--entropy-method", default="no_entropy", type=str.lower,
                         choices=["max", "regularized", "no_entropy"])
+    parser.add_argument("--gae_lambda", default="0.97", type=float)
+    parser.add_argument("--policy_ent_coeff", default="0.00", type=float)
+    parser.add_argument("--center_adv", default=False, type=str2bool)
+    parser.add_argument("--positive_adv", default=False, type=str2bool)
+    parser.add_argument("--use_softplus_entropy", default=False, type=str2bool)
+    parser.add_argument("--stop_entropy_gradient", default=False, type=str2bool)
+
     args = parser.parse_args()
     bound_type_dict = {"lower": LOWER, "upper": UPPER, "terminal": TERMINAL}
     bound_type = bound_type_dict[args.bound_type]
@@ -192,4 +219,7 @@ if __name__ == "__main__":
          snapshot_gap=args.snapshot_gap, bound_type=bound_type,
          src_filepath=args.src_filepath, discount=args.discount,
          d=args.d, log_info=log_info,
-         vf_lr=args.vf_lr, minibatch_size=args.minibatch_size, entropy_method = args.entropy_method)
+         vf_lr=args.vf_lr, minibatch_size=args.minibatch_size, entropy_method = args.entropy_method, 
+         gae_lambda=args.gae_lambda, policy_ent_coeff=args.policy_ent_coeff,
+         center_adv=args.center_adv, positive_adv=args.positive_adv, use_softplus_entropy=args.use_softplus_entropy,
+         stop_entropy_gradient=args.stop_entropy_gradient)

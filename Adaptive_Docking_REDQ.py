@@ -1,5 +1,5 @@
 """
-Use REDQ to learn an agent that adaptively designs docking location experiments
+Use REDQ to learn an agent that adaptively designs docking experiments
 """
 import argparse
 
@@ -33,7 +33,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
          log_dir=None, snapshot_mode="gap", snapshot_gap=500, bound_type=LOWER,
-         src_filepath=None, discount=1., alpha=None, d=2, log_info=None,
+         src_filepath=None, discount=1., alpha=None, d=100, log_info=None,
          tau=5e-3, pi_lr=3e-4, qf_lr=3e-4, buffer_capacity=int(1e6), ens_size=2,
          M=2, minibatch_size=4096, lstm_qfunction=False):
     if log_info is None:
@@ -43,7 +43,7 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
                      snapshot_gap=snapshot_gap)
     def redq_docking(ctxt=None, n_parallel=1, budget=1, n_rl_itr=1,
                    n_cont_samples=10, seed=0, src_filepath=None, discount=1.,
-                   alpha=None, d=2, tau=5e-3, pi_lr=3e-4, qf_lr=3e-4,
+                   alpha=None, d=100, tau=5e-3, pi_lr=3e-4, qf_lr=3e-4,
                    buffer_capacity=int(1e6), ens_size=2, M=2,
                    minibatch_size=4096, lstm_qfunction=False):
         
@@ -77,9 +77,9 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
         else:
             logger.log("creating new policy")
             layer_size = 128
-            design_space = BatchBox(low=-70., high=0., shape=(1, 1, 1, d))
-            obs_space = BatchBox(low=torch.as_tensor([-70.] * d + [-7.]),
-                                 high=torch.as_tensor([0.] * d + [0.])
+            design_space = BatchBox(low=-75., high=0., shape=(1, 1, 1, d))
+            obs_space = BatchBox(low=torch.as_tensor([-75.] * 2 * d),
+                                 high=torch.as_tensor([1.] * 2 * d)
                                  )
             # is_cube = round(minibatch_size ** (1/3)) ** 3 == minibatch_size
             is_cube = False
@@ -195,12 +195,11 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
 
     logger.dump_all()
 
-
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--id", default="1", type=int)
-    parser.add_argument("--n-parallel", default="50", type=int)
-    parser.add_argument("--budget", default="30", type=int)
+    parser.add_argument("--n-parallel", default="10", type=int)
+    parser.add_argument("--budget", default="5", type=int)
     parser.add_argument("--n-rl-itr", default="50", type=int)
     parser.add_argument("--n-contr-samples", default="10", type=int)
     parser.add_argument("--log-dir", default=None, type=str)
@@ -211,7 +210,7 @@ if __name__ == "__main__":
                         choices=["lower", "upper", "terminal"])
     parser.add_argument("--discount", default="1", type=float)
     parser.add_argument("--alpha", default="-1", type=float)
-    parser.add_argument("--d", default="100", type=int)
+    parser.add_argument("--d", default="50", type=int)
     parser.add_argument("--tau", default="5e-3", type=float)
     parser.add_argument("--pi-lr", default="3e-4", type=float)
     parser.add_argument("--qf-lr", default="3e-4", type=float)

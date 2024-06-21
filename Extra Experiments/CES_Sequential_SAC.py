@@ -13,7 +13,7 @@ from garage.torch.q_functions import ContinuousMLPQFunction
 from garage.torch import set_gpu_mode
 from garage.torch.algos import SAC
 from garage.sampler import LocalSampler
-from gym import spaces
+from gymnasium import spaces
 from pyro.contrib.util import lexpand
 from pyro.envs.design_env import DesignEnv
 from pyro.models.experiment_model import CESModel

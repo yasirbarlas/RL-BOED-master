@@ -21,8 +21,8 @@ class PathBuffer:
         self._transitions_stored = 0
         self._first_idx_of_next_path = 0
         # Each path in the buffer has a tuple of two ranges in
-        # self._path_segments. If the path is stored in a single contiguous
-        # region of the buffer, the second range will be range(0, 0).
+        # self._path_segments. If the path is stored in a single contiguous region 
+        # of the buffer, the second range will be range(0, 0).
         # The "left" side of the deque contains the oldest episode.
         self._path_segments = collections.deque()
         self._buffer = {}

@@ -19,7 +19,7 @@ from pyro.algos._functions import obtain_evaluation_episodes, RLAlgorithm
 
 
 class REDQ(RLAlgorithm):
-    """A REDQ Model in Torch. This takes the form found in https://github.com/csiro-mlai/RL-BOED.
+    """A REDQ Model in Torch. This implementation is made much closer to that found in https://github.com/watchernyu/REDQ.
 
     Based on Randomized Ensembled Double Q-Learning: Learning Fast Without a Model:
         https://arxiv.org/abs/2101.05982
@@ -145,10 +145,8 @@ class REDQ(RLAlgorithm):
         self._reward_scale = reward_scale
         # use ensemble of target q networks
         self._target_qfs = [copy.deepcopy(q) for q in self._qfs]
-        self._policy_optimizer = self._optimizer(self.policy.parameters(),
-                                                 lr=self._policy_lr)
-        self._qf_optimizers = [
-            self._optimizer(q.parameters(), lr=self._qf_lr) for q in self._qfs]
+        self._policy_optimizer = self._optimizer(self.policy.parameters(), lr=self._policy_lr)
+        self._qf_optimizers = [self._optimizer(q.parameters(), lr=self._qf_lr) for q in self._qfs]
         # automatic entropy coefficient tuning
         self._use_automatic_entropy_tuning = fixed_alpha is None
         self._fixed_alpha = fixed_alpha
@@ -156,12 +154,9 @@ class REDQ(RLAlgorithm):
             if target_entropy:
                 self._target_entropy = target_entropy
             else:
-                self._target_entropy = -np.prod(
-                    self.env_spec.action_space.shape).item()
-            self._log_alpha = torch.Tensor([self._initial_log_entropy
-                                            ]).requires_grad_()
-            self._alpha_optimizer = optimizer([self._log_alpha],
-                                              lr=self._policy_lr)
+                self._target_entropy = -np.prod(self.env_spec.action_space.shape).item()
+            self._log_alpha = torch.Tensor([self._initial_log_entropy]).requires_grad_()
+            self._alpha_optimizer = optimizer([self._log_alpha], lr=self._policy_lr)
         else:
             self._log_alpha = torch.Tensor([self._fixed_alpha]).log()
         self.episode_rewards = deque(maxlen=30)
@@ -182,14 +177,14 @@ class REDQ(RLAlgorithm):
         last_return = None
         for _ in trainer.step_epochs():
             for _ in range(self._steps_per_epoch):
-                if not (self.replay_buffer.n_transitions_stored >=
-                        self._min_buffer_size):
+                if not (self.replay_buffer.n_transitions_stored >= self._min_buffer_size):
                     batch_size = int(self._min_buffer_size)
                 else:
                     batch_size = None
-                trainer.step_episode = trainer.obtain_samples(
-                    trainer.step_itr, batch_size)
+                
+                trainer.step_episode = trainer.obtain_samples(trainer.step_itr, batch_size)
                 path_returns = []
+                
                 for path in trainer.step_episode:
                     self.replay_buffer.add_path(
                         dict(observation=path['observations'],
@@ -200,59 +195,55 @@ class REDQ(RLAlgorithm):
                              mask=path['masks'],
                              next_mask=path['next_masks'],))
                     path_returns.append(sum(path['rewards']))
+                
                 assert len(path_returns) == len(trainer.step_episode)
-                allrets = torch.tensor(
-                    [path["rewards"].sum() for path in trainer.step_episode]
-                ).cpu().numpy()
-                allact = torch.cat(
-                    [path["actions"] for path in trainer.step_episode]
-                ).cpu().numpy()
-                self.episode_rewards.append(
-                    torch.stack(path_returns).mean().cpu().numpy())
+                allrets = torch.tensor([path["rewards"].sum() for path in trainer.step_episode]).cpu().numpy()
+                allact = torch.cat([path["actions"] for path in trainer.step_episode]).cpu().numpy()
+                self.episode_rewards.append(torch.stack(path_returns).mean().cpu().numpy())
+                
                 for _ in range(self._gradient_steps):
                     policy_loss, qf_losses, entropy = self.train_once()
+            
             last_return = allrets
+            
             if self._eval_env is not None:
                 last_return = self._evaluate_policy(trainer.step_itr)
+            
             self._log_statistics(policy_loss, qf_losses, entropy)
-            self._discount = np.clip(self._discount + self._discount_delta,
-                                     a_min=0., a_max=1.)
+            self._discount = np.clip(self._discount + self._discount_delta, a_min=0., a_max=1.)
             tabular.record('TotalEnvSteps', trainer.total_env_steps)
             tabular.record('Return/MedianReturn', np.median(allrets))
-            tabular.record('Return/LowerQuartileReturn',
-                           np.percentile(allrets, 25))
-            tabular.record('Return/UpperQuartileReturn',
-                           np.percentile(allrets, 75))
+            tabular.record('Return/LowerQuartileReturn', np.percentile(allrets, 25))
+            tabular.record('Return/UpperQuartileReturn', np.percentile(allrets, 75))
             tabular.record('Return/MeanReturn', np.mean(allrets))
             tabular.record('Return/StdReturn', np.std(allrets))
             tabular.record("Return/MaxReturn", allrets.max())
             tabular.record("Return/MinReturn", allrets.min())
             tabular.record("Policy/Discount", self._discount)
+            
             if "log_std" in trainer.step_episode[0]["agent_infos"]:
-                log_stds = torch.stack(
-                    [p["agent_infos"]["log_std"] for p in trainer.step_episode])
+                log_stds = torch.stack([p["agent_infos"]["log_std"] for p in trainer.step_episode])
                 mean_std = log_stds.exp().mean(dim=(0, 1)).cpu().numpy()
                 tabular.record("Policy/MeanStd", mean_std)
-                mean_ent = log_stds.mean().cpu().numpy() + \
-                    0.5 + 0.5 * np.log(2 * np.pi)
+                mean_ent = log_stds.mean().cpu().numpy() + 0.5 + 0.5 * np.log(2 * np.pi)
+            
             if "mean" in trainer.step_episode[0]["agent_infos"]:
-                mean_mean = torch.stack(
-                    [p["agent_infos"]["mean"] for p in trainer.step_episode]
-                ).mean(dim=(0, 1)).cpu().numpy()
+                mean_mean = torch.stack([p["agent_infos"]["mean"] for p in trainer.step_episode]).mean(dim=(0, 1)).cpu().numpy()
                 tabular.record("Policy/Mean", mean_mean)
+            
             if "logits" in trainer.step_episode[0]["agent_infos"]:
-                mean_temp = torch.stack(
-                    [p["agent_infos"]["log_temp"] for p in trainer.step_episode]
-                ).exp().mean(dim=(0, 1)).cpu().numpy()
+                mean_temp = torch.stack([p["agent_infos"]["log_temp"] for p in trainer.step_episode]).exp().mean(dim=(0, 1)).cpu().numpy()
                 tabular.record("Policy/MeanTemp", mean_temp)
-                logits = torch.stack(
-                    [p["agent_infos"]["logits"] for p in trainer.step_episode])
+                logits = torch.stack([p["agent_infos"]["logits"] for p in trainer.step_episode])
                 lps = F.log_softmax(logits, dim=-1)
                 mean_ent = (-lps * lps.exp()).sum(dim=-1).mean().cpu().numpy()
+                
                 if not self._use_automatic_entropy_tuning:
                     self._log_alpha -= 1e-4
+            
             if self._use_automatic_entropy_tuning:
                 self._target_entropy -= self._ent_anneal_rate
+            
             tabular.record("Policy/MeanEntropy", mean_ent)
             tabular.record("Action/MeanAction", allact.mean(axis=0))
             tabular.record("Action/StdAction", allact.std(axis=0))
@@ -277,8 +268,7 @@ class REDQ(RLAlgorithm):
         del itr
         del paths
         if self.replay_buffer.n_transitions_stored >= self._min_buffer_size:
-            samples = self.replay_buffer.sample_transitions(
-                self._buffer_batch_size)
+            samples = self.replay_buffer.sample_transitions(self._buffer_batch_size)
             # samples = as_torch_dict(samples)
             policy_loss, qf_losses, entropy = self.optimize_policy(samples)
             self._update_targets()
@@ -378,19 +368,13 @@ class REDQ(RLAlgorithm):
         with torch.no_grad():
             alpha = self._get_log_alpha(samples_data).exp()
         if self.env_spec.action_space.is_discrete:
-            min_q_new_actions = torch.min(
-                torch.stack([q(obs, mask=mask) for q in self._qfs]),
-                dim=0).values
+            min_q_new_actions = torch.min(torch.stack([q(obs, mask=mask) for q in self._qfs]),dim=0).values
             pi_new_actions = log_pi_new_actions.exp()
-            policy_objective = ((alpha * log_pi_new_actions) -
-                                min_q_new_actions) * pi_new_actions
+            policy_objective = ((alpha * log_pi_new_actions) - min_q_new_actions) * pi_new_actions
             policy_objective = policy_objective.sum(axis=1).mean()
         else:
-            min_q_new_actions = torch.min(
-                torch.stack([q(obs, new_actions, mask) for q in self._qfs]),
-                dim=0).values
-            policy_objective = ((alpha * log_pi_new_actions) -
-                                min_q_new_actions.flatten()).mean()
+            min_q_new_actions = torch.min(torch.stack([q(obs, new_actions, mask) for q in self._qfs]),dim=0).values
+            policy_objective = ((alpha * log_pi_new_actions) - min_q_new_actions.flatten()).mean()
         return policy_objective
 
     def _critic_objective(self, samples_data):
@@ -427,10 +411,8 @@ class REDQ(RLAlgorithm):
 
         next_action_dist = self.policy(next_obs, mask)[0]
         if hasattr(next_action_dist, 'rsample_with_pre_tanh_value'):
-            next_actions_pre_tanh, next_actions = (
-                next_action_dist.rsample_with_pre_tanh_value())
-            new_log_pi = next_action_dist.log_prob(
-                value=next_actions, pre_tanh_value=next_actions_pre_tanh)
+            next_actions_pre_tanh, next_actions = (next_action_dist.rsample_with_pre_tanh_value())
+            new_log_pi = next_action_dist.log_prob(value=next_actions, pre_tanh_value=next_actions_pre_tanh)
         else:
             new_log_pi = next_action_dist.logits
 
@@ -440,23 +422,12 @@ class REDQ(RLAlgorithm):
             in_target_qfs = [self._target_qfs[i] for i in m_idx]
             # get exact expectation for discrete action spaces
             if self.env_spec.action_space.is_discrete:
-                target_q_values = torch.min(
-                    torch.stack([
-                        q(next_obs, mask=next_mask) for q in in_target_qfs
-                    ]),
-                    dim=0
-                ).values - alpha * new_log_pi
+                target_q_values = torch.min(torch.stack([q(next_obs, mask=next_mask) for q in in_target_qfs]), dim=0).values - alpha * new_log_pi
                 new_pi = next_action_dist.probs
                 target_q_values = (target_q_values * new_pi).sum(axis=1)
             else:
-                target_q_values = torch.min(
-                    torch.stack([
-                        q(next_obs, next_actions, next_mask) for q in in_target_qfs
-                    ]),
-                    dim=0
-                ).values.flatten() - (alpha * new_log_pi)
-            q_target = rewards * self._reward_scale + (
-                    1. - terminals) * self._discount * target_q_values
+                target_q_values = torch.min(torch.stack([q(next_obs, next_actions, next_mask) for q in in_target_qfs]), dim=0).values.flatten() - (alpha * new_log_pi)
+            q_target = rewards * self._reward_scale + (1. - terminals) * self._discount * target_q_values
         q_preds = [q(obs, actions, mask) for q in self._qfs]
         qf_losses = [F.mse_loss(pred.flatten(), q_target) for pred in q_preds]
         return qf_losses
@@ -465,8 +436,7 @@ class REDQ(RLAlgorithm):
         """Update parameters in the target q-functions."""
         for target_qf, qf in zip(self._target_qfs, self._qfs):
             for t_param, param in zip(target_qf.parameters(), qf.parameters()):
-                t_param.data.copy_(t_param.data * (1.0 - self._tau) +
-                                   param.data * self._tau)
+                t_param.data.copy_(t_param.data * (1.0 - self._tau) + param.data * self._tau)
 
     def optimize_policy(self, samples_data):
         """Optimize the policy q_functions, and temperature coefficient.
@@ -503,15 +473,12 @@ class REDQ(RLAlgorithm):
         # train actor
         action_dists = self.policy(obs, mask)[0]
         if hasattr(action_dists, 'rsample_with_pre_tanh_value'):
-            new_actions_pre_tanh, new_actions = (
-                action_dists.rsample_with_pre_tanh_value())
-            log_pi_new_actions = action_dists.log_prob(
-                value=new_actions, pre_tanh_value=new_actions_pre_tanh)
+            new_actions_pre_tanh, new_actions = (action_dists.rsample_with_pre_tanh_value())
+            log_pi_new_actions = action_dists.log_prob(value=new_actions, pre_tanh_value=new_actions_pre_tanh)
         else:
             new_actions = None
             log_pi_new_actions = action_dists.logits
-        policy_loss = self._actor_objective(samples_data, new_actions,
-                                            log_pi_new_actions)
+        policy_loss = self._actor_objective(samples_data, new_actions, log_pi_new_actions)
         self._policy_optimizer.zero_grad()
         policy_loss.backward()
 
@@ -520,11 +487,9 @@ class REDQ(RLAlgorithm):
         # train temperature
         entropy = -log_pi_new_actions.mean()
         if self.env_spec.action_space.is_discrete:
-            entropy = (log_pi_new_actions.exp() * -log_pi_new_actions
-                       ).sum(axis=-1).mean()
+            entropy = (log_pi_new_actions.exp() * -log_pi_new_actions).sum(axis=-1).mean()
         if self._use_automatic_entropy_tuning:
-            alpha_loss = self._temperature_objective(log_pi_new_actions,
-                                                     samples_data)
+            alpha_loss = self._temperature_objective(log_pi_new_actions, samples_data)
             self._alpha_optimizer.zero_grad()
             alpha_loss.backward()
             self._alpha_optimizer.step()
@@ -565,16 +530,12 @@ class REDQ(RLAlgorithm):
 
         """
         with torch.no_grad():
-            tabular.record('AlphaTemperature/mean',
-                           self._log_alpha.exp().mean().item())
+            tabular.record('AlphaTemperature/mean', self._log_alpha.exp().mean().item())
         tabular.record('Policy/Loss', policy_loss.item())
         tabular.record('Policy/Entropy', entropy.item())
-        tabular.record('QF/{}'.format('QfLoss'),
-                       np.mean([loss.item() for loss in qf_losses]))
-        tabular.record('ReplayBuffer/buffer_size',
-                       self.replay_buffer.n_transitions_stored)
-        tabular.record('Average/TrainAverageReturn',
-                       np.mean(self.episode_rewards))
+        tabular.record('QF/{}'.format('QfLoss'), np.mean([loss.item() for loss in qf_losses]))
+        tabular.record('ReplayBuffer/buffer_size', self.replay_buffer.n_transitions_stored)
+        tabular.record('Average/TrainAverageReturn', np.mean(self.episode_rewards))
 
     @property
     def networks(self):
@@ -600,13 +561,10 @@ class REDQ(RLAlgorithm):
         for net in self.networks:
             net.to(device)
         if not self._use_automatic_entropy_tuning:
-            self._log_alpha = torch.Tensor([self._fixed_alpha
-                                            ]).log().to(device)
+            self._log_alpha = torch.Tensor([self._fixed_alpha]).log().to(device)
         else:
-            self._log_alpha = torch.Tensor([self._initial_log_entropy
-                                            ]).to(device).requires_grad_()
-            self._alpha_optimizer = self._optimizer([self._log_alpha],
-                                                    lr=self._policy_lr)
+            self._log_alpha = torch.Tensor([self._initial_log_entropy]).to(device).requires_grad_()
+            self._alpha_optimizer = self._optimizer([self._log_alpha], lr=self._policy_lr)
 
     def __getstate__(self):
         state = self.__dict__.copy()

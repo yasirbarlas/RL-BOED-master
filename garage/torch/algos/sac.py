@@ -49,7 +49,6 @@ class SAC(RLAlgorithm):
             for off-policy evaluation. If None, defaults to
             `env_spec.max_episode_length`.
         gradient_steps_per_itr (int): Number of optimization steps that should
-        gradient_steps_per_itr(int): Number of optimization steps that should
             occur before the training step is over and a new batch of
             transitions is collected by the sampler.
         fixed_alpha (float): The entropy/temperature to be used if temperature

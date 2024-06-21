@@ -1,6 +1,5 @@
 """
-Use Proximal Policy Optimisation to learn an agent that adaptively designs constant elasticity of
-substitution experiments
+Use Proximal Policy Optimisation to learn an agent that adaptively designs docking experiments
 """
 import argparse
 
@@ -15,7 +14,7 @@ from pyro.algos import PPO
 from pyro.envs import AdaptiveDesignEnv, GymEnv, normalize
 from pyro.envs.adaptive_design_env import LOWER, UPPER, TERMINAL
 from pyro.experiment import Trainer
-from pyro.models.adaptive_experiment_model import CESModel
+from pyro.models.adaptive_experiment_model import DockingModel
 from pyro.policies import AdaptiveGaussianMLPPolicy
 from pyro.value_functions import AdaptiveMLPValueFunction
 from pyro.sampler.local_sampler import LocalSampler
@@ -44,7 +43,7 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
 
     @wrap_experiment(log_dir=log_dir, snapshot_mode=snapshot_mode,
                      snapshot_gap=snapshot_gap)
-    def ppo_ces(ctxt=None, n_parallel=1, budget=1, n_rl_itr=1,
+    def ppo_docking(ctxt=None, n_parallel=1, budget=1, n_rl_itr=1,
                    n_cont_samples=10, seed=0, src_filepath=None, discount=1.,
                    d=6, pi_lr=3e-4, vf_lr=3e-4, minibatch_size=4096, entropy_method="no_entropy",
                    lr_clip_range=0.2, gae_lambda=0.97, policy_ent_coeff=0.01,
@@ -71,12 +70,11 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
         else:
             logger.log("creating new policy")
             layer_size = 128
-            design_space = BatchBox(low=0.01, high=100, shape=(1, 1, 1, d))
-            obs_space = BatchBox(low=torch.zeros((d+1,)),
-                                 high=torch.as_tensor([100.] * d + [1.])
+            design_space = BatchBox(low=-75., high=0., shape=(1, 1, 1, d))
+            obs_space = BatchBox(low=torch.as_tensor([-75.] * 2 * d),
+                                 high=torch.as_tensor([1.] * 2 * d)
                                  )
-            model = CESModel(n_parallel=n_parallel, n_elbo_steps=1000,
-                             n_elbo_samples=10)
+            model = DockingModel(n_parallel=n_parallel, d=d)
 
             def make_env(design_space, obs_space, model, budget, n_cont_samples,
                          bound_type, true_model=None):
@@ -162,7 +160,7 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
         trainer.setup(algo=ppo, env=env)
         trainer.train(n_epochs=n_rl_itr, batch_size=n_parallel * budget)
 
-    ppo_ces(n_parallel=n_parallel, budget=budget, n_rl_itr=n_rl_itr,
+    ppo_docking(n_parallel=n_parallel, budget=budget, n_rl_itr=n_rl_itr,
                n_cont_samples=n_cont_samples, seed=seed,
                src_filepath=src_filepath, discount=discount,
                d=d, pi_lr=pi_lr, vf_lr=vf_lr, minibatch_size=minibatch_size, entropy_method=entropy_method,
