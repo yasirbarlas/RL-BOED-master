@@ -57,6 +57,7 @@ class MultiHeadedMLPModule(nn.Module):
                  output_nonlinearities=None,
                  output_w_inits=nn.init.xavier_normal_,
                  output_b_inits=nn.init.zeros_,
+                 dropout=0,
                  layer_normalization=False):
         super().__init__()
 
@@ -76,14 +77,19 @@ class MultiHeadedMLPModule(nn.Module):
         prev_size = input_dim
         for size in hidden_sizes:
             hidden_layers = nn.Sequential()
-            if layer_normalization:
-                hidden_layers.add_module('layer_normalization',
-                                         nn.LayerNorm(prev_size))
             linear_layer = nn.Linear(prev_size, size)
             hidden_w_init(linear_layer.weight)
             hidden_b_init(linear_layer.bias)
             hidden_layers.add_module('linear', linear_layer)
+            
+            if dropout > 0:
+                hidden_layers.add_module('dropout',
+                                         nn.Dropout(dropout))
 
+            if layer_normalization:
+                hidden_layers.add_module('layer_normalization',
+                                         nn.LayerNorm(size))
+                
             if hidden_nonlinearity:
                 hidden_layers.add_module('non_linearity',
                                          NonLinearity(hidden_nonlinearity))

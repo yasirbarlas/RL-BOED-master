@@ -1,5 +1,7 @@
 """
-Use REDQ to learn an agent that adaptively designs docking experiments
+Use REDQ/DroQ to learn an agent that adaptively designs docking experiments
+To use DroQ, enter the same number of M Q-functions into the algorithm (so M = 2 means 2 Q-functions),
+enable dropout (at 0.01 or another probability), and lastly enable layer normalisation.
 """
 import argparse
 
@@ -35,7 +37,8 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
          log_dir=None, snapshot_mode="gap", snapshot_gap=500, bound_type=LOWER,
          src_filepath=None, discount=1., alpha=None, d=100, log_info=None,
          tau=5e-3, pi_lr=3e-4, qf_lr=3e-4, buffer_capacity=int(1e6), ens_size=2,
-         M=2, minibatch_size=4096, lstm_qfunction=False):
+         M=2, minibatch_size=4096, lstm_qfunction=False, dropout=0, 
+         layer_normalization=False):
     if log_info is None:
         log_info = []
 
@@ -45,7 +48,8 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
                    n_cont_samples=10, seed=0, src_filepath=None, discount=1.,
                    alpha=None, d=100, tau=5e-3, pi_lr=3e-4, qf_lr=3e-4,
                    buffer_capacity=int(1e6), ens_size=2, M=2,
-                   minibatch_size=4096, lstm_qfunction=False):
+                   minibatch_size=4096, lstm_qfunction=False, dropout=0, 
+                   layer_normalization=False):
         
         if log_info:
             logger.log(str(log_info))
@@ -147,7 +151,9 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
                         emitter_sizes=[layer_size, layer_size],
                         emitter_nonlinearity=nn.ReLU,
                         emitter_output_nonlinearity=None,
-                        encoding_dim=layer_size//2
+                        encoding_dim=layer_size//2,
+                        dropout=dropout,
+                        layer_normalization=layer_normalization
                     )
 
             env = make_env(design_space, obs_space, model, budget,
@@ -191,11 +197,23 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
                src_filepath=src_filepath, discount=discount, alpha=alpha,
                d=d, tau=tau, pi_lr=pi_lr, qf_lr=qf_lr,
                buffer_capacity=buffer_capacity, ens_size=ens_size, M=M,
-               minibatch_size=minibatch_size, lstm_qfunction=lstm_qfunction)
+               minibatch_size=minibatch_size, lstm_qfunction=lstm_qfunction, 
+               dropout=dropout, layer_normalization=layer_normalization)
 
     logger.dump_all()
 
 if __name__ == "__main__":
+
+    def str2bool(v):
+        if isinstance(v, bool):
+            return v
+        if v.lower() in ('yes', 'true', 't', 'y', '1'):
+            return True
+        elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+            return False
+        else:
+            raise argparse.ArgumentTypeError('Boolean value expected.')
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--id", default="1", type=int)
     parser.add_argument("--n-parallel", default="10", type=int)
@@ -218,7 +236,9 @@ if __name__ == "__main__":
     parser.add_argument("--ens-size", default="2", type=int)
     parser.add_argument("--M", default="2", type=int)
     parser.add_argument("--minibatch-size", default="4096", type=int)
-    parser.add_argument("--lstm-q-function", default=False, type=bool)
+    parser.add_argument("--lstm-q-function", default=False, type=str2bool)
+    parser.add_argument("--layer-norm", default=False, type=str2bool)
+    parser.add_argument("--dropout", default=0., type=float)
     args = parser.parse_args()
     bound_type_dict = {"lower": LOWER, "upper": UPPER, "terminal": TERMINAL}
     bound_type = bound_type_dict[args.bound_type]
@@ -233,4 +253,5 @@ if __name__ == "__main__":
          src_filepath=args.src_filepath, discount=args.discount, alpha=alpha,
          d=args.d, log_info=log_info, tau=args.tau, pi_lr=args.pi_lr,
          qf_lr=args.qf_lr, buffer_capacity=buff_cap, ens_size=args.ens_size,
-         M=args.M, minibatch_size=args.minibatch_size, lstm_qfunction=args.lstm_q_function)
+         M=args.M, minibatch_size=args.minibatch_size, lstm_qfunction=args.lstm_q_function,
+         dropout=args.dropout, layer_normalization=args.layer_norm)

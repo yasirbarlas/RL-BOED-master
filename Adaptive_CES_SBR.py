@@ -82,7 +82,7 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
                                  high=torch.as_tensor([100.] * d + [1.])
                                  )
             model = CESModel(n_parallel=n_parallel, n_elbo_steps=1000,
-                             n_elbo_samples=10)
+                             n_elbo_samples=10, d=d)
 
             def make_env(design_space, obs_space, model, budget, n_cont_samples,
                          bound_type, true_model=None):
@@ -169,6 +169,17 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
 
 
 if __name__ == "__main__":
+
+    def str2bool(v):
+        if isinstance(v, bool):
+            return v
+        if v.lower() in ('yes', 'true', 't', 'y', '1'):
+            return True
+        elif v.lower() in ('no', 'false', 'f', 'n', '0'):
+            return False
+        else:
+            raise argparse.ArgumentTypeError('Boolean value expected.')
+
     parser = argparse.ArgumentParser()
     parser.add_argument("--id", default="1", type=int)
     parser.add_argument("--n-parallel", default="100", type=int)
@@ -192,7 +203,7 @@ if __name__ == "__main__":
     parser.add_argument("--M", default="2", type=int)
     parser.add_argument("--minibatch-size", default="4096", type=int)
     parser.add_argument("--reset_interval", default="128", type=int)
-    parser.add_argument("--resets", default=True, type=bool)
+    parser.add_argument("--resets", default=True, type=str2bool)
     args = parser.parse_args()
     bound_type_dict = {"lower": LOWER, "upper": UPPER, "terminal": TERMINAL}
     bound_type = bound_type_dict[args.bound_type]

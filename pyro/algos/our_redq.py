@@ -19,7 +19,7 @@ from pyro.algos._functions import obtain_evaluation_episodes, RLAlgorithm
 
 
 class REDQ(RLAlgorithm):
-    """A REDQ Model in Torch. This implementation is made much closer to that found in https://github.com/watchernyu/REDQ.
+    """A REDQ Model in Torch.
 
     Based on Randomized Ensembled Double Q-Learning: Learning Fast Without a Model:
         https://arxiv.org/abs/2101.05982
@@ -92,6 +92,7 @@ class REDQ(RLAlgorithm):
             *,  # Everything after this is numbers.
             max_episode_length_eval=None,
             gradient_steps_per_itr,
+            #max_action,
             fixed_alpha=None,
             target_entropy=None,
             initial_log_entropy=0.,
@@ -109,7 +110,9 @@ class REDQ(RLAlgorithm):
             eval_env=None,
             use_deterministic_evaluation=True,
             M=2,
-            ent_anneal_rate=0.):
+            ent_anneal_rate=0.,
+            policy_noise=0.2,
+		    noise_clip=0.5):
 
         self._qfs = qfs
         self.replay_buffer = replay_buffer
@@ -122,6 +125,10 @@ class REDQ(RLAlgorithm):
         self._num_evaluation_episodes = num_evaluation_episodes
         self._eval_env = eval_env
         self._M = M
+
+        self.policy_noise = policy_noise
+        self.noise_clip = noise_clip
+        #self.max_action = max_action
 
         self._min_buffer_size = min_buffer_size
         self._steps_per_epoch = steps_per_epoch
@@ -183,20 +190,11 @@ class REDQ(RLAlgorithm):
                     batch_size = None
                 
                 trainer.step_episode = trainer.obtain_samples(trainer.step_itr, batch_size)
-                path_returns = []
                 
-                for path in trainer.step_episode:
-                    self.replay_buffer.add_path(
-                        dict(observation=path['observations'],
-                             action=path['actions'],
-                             reward=path['rewards'].reshape(-1, 1),
-                             next_observation=path['next_observations'],
-                             terminal=path['step_types'].reshape(-1, 1),
-                             mask=path['masks'],
-                             next_mask=path['next_masks'],))
-                    path_returns.append(sum(path['rewards']))
+                path_returns = self._store_paths(trainer.step_episode)
                 
                 assert len(path_returns) == len(trainer.step_episode)
+                
                 allrets = torch.tensor([path["rewards"].sum() for path in trainer.step_episode]).cpu().numpy()
                 allact = torch.cat([path["actions"] for path in trainer.step_episode]).cpu().numpy()
                 self.episode_rewards.append(torch.stack(path_returns).mean().cpu().numpy())
@@ -250,6 +248,28 @@ class REDQ(RLAlgorithm):
             trainer.step_itr += 1
 
         return np.mean(last_return)
+
+    def _store_paths(self, paths):
+        """Store paths in the replay buffer and return the path returns.
+
+        Args:
+            paths (list): Collected paths.
+
+        Returns:
+            list: Path returns.
+        """
+        path_returns = []
+        for path in paths:
+            self.replay_buffer.add_path(
+                dict(observation=path['observations'],
+                     action=path['actions'],
+                     reward=path['rewards'].reshape(-1, 1),
+                     next_observation=path['next_observations'],
+                     terminal=path['step_types'].reshape(-1, 1),
+                     mask=path['masks'],
+                     next_mask=path['next_masks']))
+            path_returns.append(sum(path['rewards']))
+        return path_returns
 
     def train_once(self, itr=None, paths=None):
         """Complete 1 training iteration of SAC.
@@ -412,6 +432,10 @@ class REDQ(RLAlgorithm):
         next_action_dist = self.policy(next_obs, mask)[0]
         if hasattr(next_action_dist, 'rsample_with_pre_tanh_value'):
             next_actions_pre_tanh, next_actions = (next_action_dist.rsample_with_pre_tanh_value())
+            # Noise for actions (TD3)
+            #noise = (torch.randn_like(actions) * self.policy_noise).clamp(-self.noise_clip, self.noise_clip)
+            # Add noise to actions (TD3)
+            #next_actions = (torch.add(next_actions, noise)).clamp(-self.max_action, self.max_action).squeeze()
             new_log_pi = next_action_dist.log_prob(value=next_actions, pre_tanh_value=next_actions_pre_tanh)
         else:
             new_log_pi = next_action_dist.logits
@@ -429,7 +453,7 @@ class REDQ(RLAlgorithm):
                 target_q_values = torch.min(torch.stack([q(next_obs, next_actions, next_mask) for q in in_target_qfs]), dim=0).values.flatten() - (alpha * new_log_pi)
             q_target = rewards * self._reward_scale + (1. - terminals) * self._discount * target_q_values
         q_preds = [q(obs, actions, mask) for q in self._qfs]
-        qf_losses = [F.mse_loss(pred.flatten(), q_target) for pred in q_preds]
+        qf_losses = [F.huber_loss(pred.flatten(), q_target) for pred in q_preds]
         return qf_losses
 
     def _update_targets(self):

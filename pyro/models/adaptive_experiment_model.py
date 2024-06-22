@@ -10,6 +10,7 @@ from torchdiffeq import odeint
 import pyro
 import pyro.distributions as dist
 import torch
+import math
 
 EPS = 2**-22
 
@@ -67,7 +68,7 @@ class CESModel(ExperimentModel):
     def __init__(self, init_rho_model=None, init_alpha_model=None,
                  init_mu_model=None, init_sig_model=None, n_parallel=1,
                  obs_sd=0.005, obs_label="y", n_elbo_samples=100,
-                 n_elbo_steps=100, elbo_lr=0.04):
+                 n_elbo_steps=100, elbo_lr=0.04, d=6):
         super().__init__()
         self.init_rho_model = init_rho_model if init_rho_model is not None \
             else torch.ones(n_parallel, 1, 2)
@@ -92,7 +93,7 @@ class CESModel(ExperimentModel):
             "u_sig",
         ]
         self.var_names = ["rho", "alpha", "u"]
-        self.var_dim = 6
+        self.var_dim = d
         self.sanity_check()
 
     def reset(self, init_rho_model=None, init_alpha_model=None,
@@ -149,7 +150,8 @@ class CESModel(ExperimentModel):
                 u = rexpand(u, design.shape[-2])
                 #print("uexpand.shape", u.shape)
                 #print("rho.unsqueeze(-1)", rho.unsqueeze(-1).shape)
-                d1, d2 = design[..., 0:3], design[..., 3:6]
+                d1, d2 = design[..., 0:math.floor(self.var_dim/2)], design[..., math.floor(self.var_dim/2):self.var_dim]
+                #print(d1.shape, d2.shape)
                 u1rho = (rmv(d1.pow(rho.unsqueeze(-1)), alpha)).pow(1. / rho)
                 u2rho = (rmv(d2.pow(rho.unsqueeze(-1)), alpha)).pow(1. / rho)
                 mean = u * (u1rho - u2rho)
