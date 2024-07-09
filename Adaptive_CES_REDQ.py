@@ -82,11 +82,8 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
             logger.log("creating new policy")
             layer_size = 128
             design_space = BatchBox(low=0.01, high=100, shape=(1, 1, 1, d))
-            obs_space = BatchBox(low=torch.zeros((d+1,)),
-                                 high=torch.as_tensor([100.] * d + [1.])
-                                 )
-            model = CESModel(n_parallel=n_parallel, n_elbo_steps=1000,
-                             n_elbo_samples=10, d=d)
+            obs_space = BatchBox(low=torch.zeros((d+1,)), high=torch.as_tensor([100.] * d + [1.]))
+            model = CESModel(n_parallel=n_parallel, n_elbo_steps=1000, n_elbo_samples=10, d=d)
 
             def make_env(design_space, obs_space, model, budget, n_cont_samples,
                          bound_type, true_model=None):
@@ -140,14 +137,12 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
                         layer_normalization=layer_normalization
                     )
 
-            env = make_env(design_space, obs_space, model, budget,
-                           n_cont_samples, bound_type)
+            env = make_env(design_space, obs_space, model, budget, n_cont_samples, bound_type)
+            
             policy = make_policy()
             qfs = [make_q_func() for _ in range(ens_size)]
             replay_buffer = PathBuffer(capacity_in_transitions=buffer_capacity)
-            sampler = LocalSampler(agents=policy, envs=env,
-                                   max_episode_length=budget,
-                                   worker_class=VectorWorker)
+            sampler = LocalSampler(agents=policy, envs=env, max_episode_length=budget, worker_class=VectorWorker)
 
             redq = REDQ(env_spec=env.spec,
                       policy=policy,
@@ -155,7 +150,7 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
                       replay_buffer=replay_buffer,
                       sampler=sampler,
                       max_episode_length_eval=budget,
-                      gradient_steps_per_itr=64,
+                      utd_ratio=64,
                       min_buffer_size=int(1e5),
                       target_update_tau=tau,
                       policy_lr=pi_lr,

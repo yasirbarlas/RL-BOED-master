@@ -1,4 +1,4 @@
-"""This modules creates a redq model in PyTorch."""
+"""This modules creates a IV-RL model in PyTorch."""
 # yapf: disable
 from collections import deque
 import copy
@@ -18,16 +18,15 @@ from pyro.algos._functions import obtain_evaluation_episodes, RLAlgorithm
 # yapf: enable
 
 
-class REDQ(RLAlgorithm):
-    """A REDQ Model in Torch.
+class SBR(RLAlgorithm):
+    """An SBR Model in Torch.
 
-    Based on Randomized Ensembled Double Q-Learning: Learning Fast Without a Model:
-        https://arxiv.org/abs/2101.05982
+    Based on Sample-Efficient Reinforcement Learning by Breaking the Replay Ratio Barrier:
+        https://openreview.net/forum?id=OpC-9aBBVJe
 
-    Randomized Ensembled Double Q-Learning (REDQ) is an algorithm based on the Soft Actor-Critic (SAC) algorithm
-    (at least in this implementation) that has three carefully integrated ingredients which allow it to achieve its high performance: 
-    (i) a UTD ratio  1; (ii) an ensemble of Q functions; (iii) in-target minimization across a random subset of Q functions from the ensemble.
-
+    Increasing the replay ratio, the number of updates of an agent's parameters per environment interaction, 
+    is an appealing strategy for improving the sample efficiency of deep reinforcement learning algorithms.
+    
     Args:
         policy (garage.torch.policy.Policy): Policy/Actor/Agent that is being
             optimized by SAC.
@@ -79,6 +78,10 @@ class REDQ(RLAlgorithm):
         M (int): in-target minimization parameter
         ent_anneal_rate (float): the rate at which to anneal the target entropy
             in each iteration of the algorithm.
+        reset_interval (int): The interval used to reset the policy 
+            and Q-function parameters (only used if resets is True).
+        resets (Bool): If True, resets the policy and Q-function 
+            parameters every 'reset_interval' iterations.
 
     """
 
@@ -109,7 +112,9 @@ class REDQ(RLAlgorithm):
             eval_env=None,
             use_deterministic_evaluation=True,
             M=2,
-            ent_anneal_rate=0.):
+            ent_anneal_rate=0.,
+            reset_interval=2560000,
+            resets=True):
 
         self._qfs = qfs
         self.replay_buffer = replay_buffer
@@ -152,8 +157,9 @@ class REDQ(RLAlgorithm):
         # automatic entropy coefficient tuning
         self._use_automatic_entropy_tuning = fixed_alpha is None
         self._fixed_alpha = fixed_alpha
+        self.starting_target_entropy = target_entropy
         if self._use_automatic_entropy_tuning:
-            if target_entropy:
+            if self.starting_target_entropy:
                 self._target_entropy = target_entropy
             else:
                 self._target_entropy = -np.prod(
@@ -164,8 +170,19 @@ class REDQ(RLAlgorithm):
                                               lr=self._policy_lr)
         else:
             self._log_alpha = torch.Tensor([self._fixed_alpha]).log()
+
         self.episode_rewards = deque(maxlen=30)
         self._ent_anneal_rate = ent_anneal_rate
+
+        # scaled-by-resetting
+        self.reset_interval = reset_interval
+        self.resets = resets
+        self.update_count = 0
+
+        # keep copy of original networks and optimizers
+        self._original_qfs = [copy.deepcopy(q) for q in self._qfs]
+        self._original_target_qfs = [copy.deepcopy(q) for q in self._target_qfs]
+        self._original_policy = copy.deepcopy(self.policy)
 
     def train(self, trainer):
         """Obtain samplers and start actual training for each epoch.
@@ -211,12 +228,16 @@ class REDQ(RLAlgorithm):
                     torch.stack(path_returns).mean().cpu().numpy())
                 for _ in range(self._gradient_steps):
                     policy_loss, qf_losses, entropy = self.train_once()
+                # sbr
+                self.update_count += self._gradient_steps
+            
             last_return = allrets
             if self._eval_env is not None:
                 last_return = self._evaluate_policy(trainer.step_itr)
             self._log_statistics(policy_loss, qf_losses, entropy)
             self._discount = np.clip(self._discount + self._discount_delta,
                                      a_min=0., a_max=1.)
+
             tabular.record('TotalEnvSteps', trainer.total_env_steps)
             tabular.record('Return/MedianReturn', np.median(allrets))
             tabular.record('Return/LowerQuartileReturn',
@@ -257,6 +278,12 @@ class REDQ(RLAlgorithm):
             tabular.record("Action/MeanAction", allact.mean(axis=0))
             tabular.record("Action/StdAction", allact.std(axis=0))
             trainer.step_itr += 1
+
+            # sbr
+            if (self.resets == True) and (self.update_count > self.reset_interval):
+                self._reset()
+                print("Weights reset")
+                self.update_count = 0
 
         return np.mean(last_return)
 
@@ -340,10 +367,12 @@ class REDQ(RLAlgorithm):
         if self._use_automatic_entropy_tuning:
             log_pi = log_pi.detach()
             alpha = self._get_log_alpha(samples_data).exp()
+            #print("logpi", log_pi, "\nalpha:", alpha, "\ntargetent:", self._target_entropy)
             alpha_loss = -alpha * (log_pi + self._target_entropy)
             if self.env_spec.action_space.is_discrete:
                 alpha_loss = (alpha_loss * log_pi.exp()).sum(axis=-1)
             alpha_loss = alpha_loss.mean()
+            #print("\nalphaloss:", alpha_loss)
         return alpha_loss
 
     def _actor_objective(self, samples_data, new_actions, log_pi_new_actions):
@@ -585,7 +614,7 @@ class REDQ(RLAlgorithm):
 
         """
         return [
-            self.policy, *self._qfs, *self._target_qfs
+            self.policy, *self._qfs, *self._target_qfs, self._original_policy, *self._original_qfs, *self._original_target_qfs
         ]
 
     def to(self, device=None):
@@ -613,3 +642,28 @@ class REDQ(RLAlgorithm):
         del state['_sampler']
         del state['replay_buffer']
         return state
+    
+    def _reset(self):
+        self._qfs = self._original_qfs
+        self._target_qfs = self._original_target_qfs
+        self.policy = self._original_policy
+        
+        self._policy_optimizer = self._optimizer(self.policy.parameters(),
+                                                 lr=self._policy_lr)
+        self._qf_optimizers = [
+            self._optimizer(q.parameters(), lr=self._qf_lr) for q in self._qfs]
+        
+        if self._use_automatic_entropy_tuning:
+            if self.starting_target_entropy:
+                self._target_entropy = self.starting_target_entropy
+            else:
+                self._target_entropy = -np.prod(
+                    self.env_spec.action_space.shape).item()
+            self._log_alpha = torch.Tensor([self._initial_log_entropy
+                                            ]).requires_grad_()
+            self._alpha_optimizer = self._optimizer([self._log_alpha],
+                                              lr=self._policy_lr)
+        else:
+            self._log_alpha = torch.Tensor([self._fixed_alpha]).log()
+        
+        self.to()

@@ -20,7 +20,7 @@ from pyro.models.adaptive_experiment_model import DockingModel
 from pyro.policies import AdaptiveTanhGaussianPolicy
 from pyro.q_functions.adaptive_mlp_q_function import AdaptiveMLPQFunction
 from pyro.q_functions.adaptive_lstm_q_function import AdaptiveLSTMQFunction
-from pyro.replay_buffer import PathBuffer, NMCBuffer
+from pyro.replay_buffer import PathBuffer
 from pyro.sampler.local_sampler import LocalSampler
 from pyro.sampler.vector_worker import VectorWorker
 from pyro.spaces.batch_box import BatchBox
@@ -82,25 +82,7 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
             logger.log("creating new policy")
             layer_size = 128
             design_space = BatchBox(low=-75., high=0., shape=(1, 1, 1, d))
-            obs_space = BatchBox(low=torch.as_tensor([-75.] * 2 * d),
-                                 high=torch.as_tensor([1.] * 2 * d)
-                                 )
-            # is_cube = round(minibatch_size ** (1/3)) ** 3 == minibatch_size
-            is_cube = False
-            if is_cube:
-                n_in_samples = round(minibatch_size ** (1/3))
-                n_out_samples = n_in_samples ** 2
-                ratio = int(n_parallel / n_in_samples)
-                n_parallel = ratio * n_in_samples
-                logger.log(f"changing n_parallel to {n_parallel}")
-                capacity_factor = int(buffer_capacity / (n_in_samples * budget))
-                buffer_capacity = capacity_factor * n_in_samples * budget
-                logger.log(f"changing buffer_capacity to {buffer_capacity}")
-                replay_buffer = NMCBuffer(buffer_capacity, n_in_samples,
-                                          n_out_samples, budget)
-            else:
-                n_in_samples = n_out_samples = ratio = 1
-                replay_buffer = PathBuffer(capacity_in_transitions=buffer_capacity)
+            obs_space = BatchBox(low=torch.as_tensor([-75.] * d + [-70.]), high=torch.as_tensor([1.] * d + [2.]))
             model = DockingModel(n_parallel=n_parallel, d=d)
 
             def make_env(design_space, obs_space, model, budget, n_cont_samples,
@@ -110,8 +92,7 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
                         AdaptiveDesignEnv(
                             design_space, obs_space, model, budget,
                             n_cont_samples, true_model=true_model,
-                            bound_type=bound_type, M=n_in_samples,
-                            N=ratio),
+                            bound_type=bound_type),
                         normalize_obs=True
                     )
                 )
@@ -156,17 +137,12 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
                         layer_normalization=layer_normalization
                     )
 
-            env = make_env(design_space, obs_space, model, budget,
-                           n_cont_samples, bound_type)
+            env = make_env(design_space, obs_space, model, budget, n_cont_samples, bound_type)
 
-            if is_cube:
-                assert env.M == replay_buffer.M
-                assert env.budget == replay_buffer.path_len
             policy = make_policy()
             qfs = [make_q_func() for _ in range(ens_size)]
-            sampler = LocalSampler(agents=policy, envs=env,
-                                   max_episode_length=budget,
-                                   worker_class=VectorWorker)
+            replay_buffer = PathBuffer(capacity_in_transitions=buffer_capacity)
+            sampler = LocalSampler(agents=policy, envs=env, max_episode_length=budget, worker_class=VectorWorker)
 
             redq = REDQ(env_spec=env.spec,
                       policy=policy,
@@ -174,7 +150,7 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
                       replay_buffer=replay_buffer,
                       sampler=sampler,
                       max_episode_length_eval=budget,
-                      gradient_steps_per_itr=64,
+                      utd_ratio=64,
                       min_buffer_size=int(1e5),
                       target_update_tau=tau,
                       policy_lr=pi_lr,
@@ -216,8 +192,8 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--id", default="1", type=int)
-    parser.add_argument("--n-parallel", default="10", type=int)
-    parser.add_argument("--budget", default="5", type=int)
+    parser.add_argument("--n-parallel", default="100", type=int)
+    parser.add_argument("--budget", default="100", type=int)
     parser.add_argument("--n-rl-itr", default="50", type=int)
     parser.add_argument("--n-contr-samples", default="10", type=int)
     parser.add_argument("--log-dir", default=None, type=str)
@@ -228,7 +204,7 @@ if __name__ == "__main__":
                         choices=["lower", "upper", "terminal"])
     parser.add_argument("--discount", default="1", type=float)
     parser.add_argument("--alpha", default="-1", type=float)
-    parser.add_argument("--d", default="50", type=int)
+    parser.add_argument("--d", default="1", type=int)
     parser.add_argument("--tau", default="5e-3", type=float)
     parser.add_argument("--pi-lr", default="3e-4", type=float)
     parser.add_argument("--qf-lr", default="3e-4", type=float)

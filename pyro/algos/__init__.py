@@ -6,6 +6,7 @@ from pyro.algos.sbr import SBR
 from pyro.algos.vpg import VPG
 from pyro.algos.trpo import TRPO
 from pyro.algos.ppo import PPO
+from pyro.algos.sunrise import SUNRISE
 
 __all__ = [
     'DQN',

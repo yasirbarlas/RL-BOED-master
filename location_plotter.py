@@ -5,6 +5,10 @@ import numpy as np
 theta1 = [-2.2659, -0.0179]
 theta2 = [0.1618, -2.6031]
 
+#theta_single_k1 = [-0.2410,  1.3108]
+
+theta_single_k1 = [-0.8620, -0.7960]
+
 #actions = [[ 0.0173, -0.0294], [-0.2860,  0.2704], [-0.4945, -0.0883], [-3.2703e-01, -1.3836e-01], [-1.8008e-01, -2.4261e-01],
 #           [ 3.4598e-01, -3.0162e-01], [ 0.2333,  0.4469], [-0.6549, -0.0104], [-0.5931,  0.0667], [-0.6085, -0.0308],
 #           [-1.3552e-01, -4.1013e-01], [-1.0959e-01, -5.1951e-01], [ 0.4911, -0.4772], [ 0.0081, -0.5687],
@@ -21,18 +25,28 @@ actions = [[-0.1127,  0.1377], [ 0.0338, -0.2059], [ 0.2735, -0.1603], [ 2.7681e
            [ 0.5666, -0.0554], [ 0.4536, -0.1281], [ 0.5595, -0.0593], [ 0.3478, -0.0630], [ 0.4630, -0.4202],
            [ 0.1019, -0.1961], [-0.0249, -0.2406], [ 0.7963, -0.1132]]
 
+#actions_single_k1 = [[4.3051e-02,  1.3761e-01], [0.0009, -0.0780], [-1.5882e-01,  1.9912e-01], [-0.3107,  0.0543],
+#                     [0.1042,  0.3173], [ 0.2517,  0.0519], [ 0.0517, -0.4180], [-0.0117,  0.4339], [-0.0965,  0.3751],
+#                     [-0.0819,  0.4377], [-5.5684e-02,  4.2693e-01], [ 0.1232,  0.4480], [-0.1043,  0.4629], [-1.3727e-01,  4.5239e-01],
+#                     [-1.2460e-01,  5.0448e-01], [-0.0695,  0.2943], [ 0.5584,  0.0054], [-0.1534,  0.3883], [-3.8471e-01,  4.0215e-01],
+#                     [ 0.2463,  0.2890], [-0.4247, -0.3731], [-0.2815,  0.1041], [-0.1619, -0.4303], [ 0.6589, -0.0610], 
+#                     [-0.5518,  0.5859], [ 0.3697,  0.7577], [-0.6861, -0.5616], [-7.1806e-01,  5.8284e-01], [-6.4920e-02, -5.4514e-01],
+#                     [-0.7118,  0.1924]]
+
+actions_single_k1 = [[-0.0444,  0.0227], [ 0.2179, -0.1832], [-0.3366, -0.0118], [-0.2224, -0.2291], [-0.0509,  0.3703], [-0.2478, -0.2908], [-0.2220, -0.2310], [ 6.4619e-05, -4.9873e-01], [-0.2511,  0.5804], [0.5009, 0.0260], [-0.5561, -0.2751], [ 0.5324, -0.2687], [0.3414, 0.3231], [-0.2760, -0.5873], [-0.2306, -0.6073], [-0.5556, -0.2200], [ 0.1823, -0.7594], [-0.6007,  0.5839], [0.1345, 0.4432], [-0.6809,  0.0314], [-0.3803, -0.4597], [-0.6977,  0.5072], [-0.6012,  0.6329], [-0.6081, -0.0562], [-0.7552,  0.5838], [-0.3221, -0.1870], [-0.3628, -0.2476], [ 0.0486, -0.0848], [-0.1462,  0.1698], [ 0.8494, -0.1492]]
+
 # Multiply each number by 4
-scaled_actions = [[4 * x, 4 * y] for x, y in actions]
+scaled_actions = [[4 * x, 4 * y] for x, y in actions_single_k1]
 
 # Extracting x and y coordinates
 x, y = zip(*scaled_actions)
 
 # Points theta1 and theta2
-#theta1 = np.array([-2.2659e+00, -1.7917e-02])
-#theta2 = np.array([ 1.6182e-01, -2.6031e+00])
+#theta1 = np.array[-2.2659e+00, -1.7917e-02]
+#theta2 = np.array[ 1.6182e-01, -2.6031e+00]
 
-theta1 = np.array([ 1.8805e+00, -1.1253e+00])
-theta2 = np.array([ 1.8882e-01, -7.5086e-01])
+#theta1 = np.array([ 1.8805e+00, -1.1253e+00])
+#theta2 = np.array([ 1.8882e-01, -7.5086e-01])
 
 # Constants for the signal intensity equation
 b = 1e-1
@@ -47,19 +61,19 @@ yi = np.linspace(min(y) - 5, max(y) + 5, grid_size)
 xi, yi = np.meshgrid(xi, yi)
 
 # Calculate the signal intensity at each point in the grid
-intensity = b + (alpha1 / (m + (np.square(xi - theta1[0]) + np.square(yi - theta1[1])))) \
-              + (alpha2 / (m + (np.square(xi - theta2[0]) + np.square(yi - theta2[1]))))
+#intensity = b + (alpha1 / (m + (np.square(xi - theta_single_k1[0] + np.square(yi - theta_single_k1[1]))) 
+              #+ (alpha2 / (m + (np.square(xi - theta2[0] + np.square(yi - theta2[1])))
 
-#cmap, norm = mcolors.from_levels_and_colors([0, 2, 5, 6], ['red', 'green', 'blue'])
+#cmap, norm = mcolors.from_levels_and_colors[0, 2, 5, 6], ['red', 'green', 'blue']
 
 # Plot the points and the intensity map
 plt.figure(figsize=(10, 6))
 scatter = plt.scatter(x, y, c=np.linspace(1, 30, len(scaled_actions)), cmap='viridis', label='Designs')
 plt.colorbar(scatter, label='Experiment Order')
-plt.contourf(xi, yi, intensity, levels=50, cmap='hot', alpha=0.4)
+#plt.contourf(xi, yi, intensity, levels=50, cmap='hot', alpha=0.4)
 
 # Mark the points theta1 and theta2
-plt.scatter([theta1[0], theta2[0]], [theta1[1], theta2[1]], color='blue', label='Locations', marker='x')
+plt.scatter([theta_single_k1[0]], [theta_single_k1[1]], color='blue', label='Locations', marker='x')
 
 plt.xlim((-4, 4))
 plt.ylim((-4, 4))

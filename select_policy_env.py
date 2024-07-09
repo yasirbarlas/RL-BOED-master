@@ -65,6 +65,8 @@ def main(src, results, dest, n_contrastive_samples, n_parallel,
         env = make_ces_env(ces_d, n_parallel, seq_length, n_contrastive_samples, bound_type)
 
     pi = algo.policy
+    # Evaluation mode
+    pi.eval()
     # qf1, qf2 = algo._qf2, algo._qf2
     env.env.l = n_contrastive_samples
     env.env.n_parallel = n_parallel

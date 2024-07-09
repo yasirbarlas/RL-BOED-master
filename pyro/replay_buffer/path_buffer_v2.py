@@ -2,21 +2,22 @@
 import collections
 
 import numpy as np
+import torch
+
+from pyro._dtypes import TimeStepBatch
 
 
-class ListBuffer:
-    """A replay buffer that stores and can sample whole paths.
-
-    This buffer only stores valid steps, and doesn't require paths to
-    have a maximum length.
-
-    Args:
-        capacity_in_transitions (int): Total memory allocated for the buffer.
-
+class PathBufferV2:
+    """A replay buffer that stores and can sample whole episodes.	
+    This buffer only stores valid steps, and doesn't require paths to	
+    have a maximum length.	
+    Args:	
+        capacity_in_transitions (int): Total memory allocated for the buffer.	
+        env_spec (EnvSpec): Environment specification.	
     """
-
-    def __init__(self, capacity_in_transitions):
+    def __init__(self, capacity_in_transitions, env_spec=None):
         self._capacity = capacity_in_transitions
+        self._env_spec = env_spec
         self._transitions_stored = 0
         self._first_idx_of_next_path = 0
         # Each path in the buffer has a tuple of two ranges in
@@ -25,6 +26,25 @@ class ListBuffer:
         # The "left" side of the deque contains the oldest episode.
         self._path_segments = collections.deque()
         self._buffer = {}
+
+    def add_episode_batch(self, episodes):
+        """Add a EpisodeBatch to the buffer.	
+        Args:	
+            episodes (EpisodeBatch): Episodes to add.	
+        """
+        if self._env_spec is None:
+            self._env_spec = episodes.env_spec
+        for eps in episodes.split():
+            path = dict(
+                observation=eps.observations,
+                mask=eps.masks,
+                action=eps.actions,
+                reward=eps.rewards.reshape(-1, 1),
+                next_observation=eps.next_observations,
+                next_mask=torch.cat(
+                    [eps.masks[1:], eps.last_masks.unsqueeze(dim=0)]),
+                terminal=eps.step_types.reshape(-1, 1),)
+            self.add_path(path)
 
     def add_path(self, path):
         """Add a path to the buffer.
@@ -40,7 +60,8 @@ class ListBuffer:
             path_array = path.get(key, None)
             if path_array is None:
                 raise ValueError('Key {} missing from path.'.format(key))
-            if path_array.shape[-1] != buf_arr[0].shape[-1]:
+            if (len(path_array.shape) < 2
+                    or path_array.shape[1:] != buf_arr.shape[1:]):
                 raise ValueError('Array {} has wrong shape.'.format(key))
         path_len = self._get_path_length(path)
         first_seg, second_seg = self._next_path_segments(path_len)
@@ -92,8 +113,30 @@ class ListBuffer:
 
         """
         idx = np.random.randint(self._transitions_stored, size=batch_size)
-        return {key: np.array([buf_arr[i] for i in idx])
-                for key, buf_arr in self._buffer.items()}
+        return {key: buf_arr[idx] for key, buf_arr in self._buffer.items()}
+
+    def sample_timesteps(self, batch_size):
+        """Sample a batch of timesteps from the buffer.
+
+        Args:
+            batch_size (int): Number of timesteps to sample.
+
+        Returns:
+            TimeStepBatch: The batch of timesteps.
+
+        """
+        samples = self.sample_transitions(batch_size)
+        return TimeStepBatch(env_spec=self._env_spec,
+                             episode_infos={},
+                             observations=samples['observation'],
+                             masks=samples['mask'],
+                             actions=samples['action'],
+                             rewards=samples['reward'].flatten(),
+                             next_observations=samples['next_observation'],
+                             next_masks=samples['next_mask'],
+                             step_types=samples['terminal'].flatten(),
+                             env_infos={},
+                             agent_infos={})
 
     def _next_path_segments(self, n_indices):
         """Compute where the next path should be stored.
@@ -131,7 +174,10 @@ class ListBuffer:
         """
         buf_arr = self._buffer.get(key, None)
         if buf_arr is None:
-            buf_arr = list(np.zeros((self._capacity, array.shape[-1])))
+            buf_arr = torch.zeros(
+                (self._capacity,) + array.shape[1:],
+                dtype=array.dtype
+            )
             self._buffer[key] = buf_arr
         return buf_arr
 

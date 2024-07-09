@@ -2,11 +2,7 @@ import pyro
 import torch
 import numpy as np
 
-<<<<<<< HEAD
 from gymnasium import Env
-=======
-from gym import Env
->>>>>>> 86e044686651f01bd66c1063c70693c2645fd0b3
 
 
 class DesignEnv(Env):
