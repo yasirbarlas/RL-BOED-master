@@ -78,7 +78,10 @@ class UCBVectorWorker(DefaultWorker):
                     min_std=np.exp(-20.),
                     max_std=np.exp(0.),
                 )
-            p.load_state_dict(self.agent[i])
+            if isinstance(self.agent[i], dict):
+                p.load_state_dict(self.agent[i])
+            else:
+                p = self.agent[i]
             p.reset()
             op.append(p)
         
@@ -106,7 +109,10 @@ class UCBVectorWorker(DefaultWorker):
                             layer_normalization=self._layer_normalization
                         )
             
-            q.load_state_dict(self.qf[i])
+            if isinstance(self.qf[i], dict):
+                q.load_state_dict(self.qf[i])
+            else:
+                q = self.qf[i]
             oq.append(q)
 
         self.agent = op

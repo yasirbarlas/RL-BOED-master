@@ -489,16 +489,19 @@ class SUNRISE(RLAlgorithm):
                     new_pi = next_action_dist.probs
                     target_q_values = (target_q_values * new_pi).sum(axis=1)
                 else:
-                    target_q_values = in_target_qfs[i](next_obs, next_actions, next_mask) - (alphas[i].exp().to("cuda") * new_log_pi)
-
+                    target_q_values = in_target_qfs[i](next_obs, next_actions, next_mask).squeeze() - (alphas[i].exp().to(new_log_pi.device) * new_log_pi)
+                    #print(target_q_values.shape)
                 q_target = rewards * self._reward_scale + (1. - terminals) * self._discount * target_q_values
 
             # Compute MSBE for this critic
             agent_critic_pred = critic(obs, actions, mask)
-            td_error = q_target - agent_critic_pred
+            #td_error = q_target - agent_critic_pred
             # SUNRISE critic loss
-            critic_loss = (0.5 * weights * (td_error ** 2)).mean()
-            critic_losses.append(critic_loss)
+            #critic_loss = (0.5 * weights * (td_error ** 2)).mean()
+            #print(weights.shape, F.mse_loss(agent_critic_pred.flatten(), q_target).shape)
+            critic_loss = F.mse_loss(agent_critic_pred.flatten(), q_target, reduction="none") * weights.squeeze()
+            #print(critic_loss.shape)
+            critic_losses.append(critic_loss.mean())
 
         return critic_losses
 

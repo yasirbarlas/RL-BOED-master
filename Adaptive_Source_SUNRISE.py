@@ -20,7 +20,7 @@ from pyro.models.adaptive_experiment_model import SourceModel
 from pyro.policies import AdaptiveTanhGaussianPolicy
 from pyro.q_functions.adaptive_mlp_q_function import AdaptiveMLPQFunction
 from pyro.q_functions.adaptive_lstm_q_function import AdaptiveLSTMQFunction
-from pyro.replay_buffer import PathBuffer, NMCBuffer
+from pyro.replay_buffer import PathBuffer
 from pyro.sampler.ucb_local_sampler import UCBLocalSampler
 from pyro.sampler.ucb_vector_worker import UCBVectorWorker
 from pyro.spaces.batch_box import BatchBox
@@ -154,7 +154,7 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
                       sampler=sampler,
                       max_episode_length_eval=budget,
                       utd_ratio=64,
-                      min_buffer_size=int(1e3),
+                      min_buffer_size=int(1e5),
                       target_update_tau=tau,
                       policy_lr=pi_lr,
                       qf_lr=qf_lr,
