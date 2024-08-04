@@ -331,46 +331,54 @@ def sigmoid(x, top, bottom, ee50, slope):
     return (top - bottom) * torch.sigmoid((x - ee50) * slope) + bottom
 
 class DockingModel(ExperimentModel):
-    def __init__(self, n_parallel, d=1, top_prior_con=None, bottom_prior_con=None, ee50_prior_mu=None, ee50_prior_sd=None, slope_prior_mu=None,
-            slope_prior_sd=None, obs_label="y"):
+    def __init__(self, n_parallel, d=1, init_top_prior_con=None, init_bottom_prior_con=None, init_ee50_prior_mu=None, init_ee50_prior_sd=None, init_slope_prior_mu=None,
+            init_slope_prior_sd=None, obs_label="y"):
         super().__init__()
-        #self.top_prior_con = top_prior_con if top_prior_con is not None \
-        #    else torch.tensor([25., 75.])
-        #self.bottom_prior_con = bottom_prior_con if bottom_prior_con is not None \
-        #    else torch.tensor([4., 96.])
-        
-        #self.ee50_prior_mu = ee50_prior_mu if ee50_prior_mu is not None \
-        #    else torch.tensor(-50.)
-        #self.ee50_prior_sd = ee50_prior_sd if ee50_prior_sd is not None \
-        #    else torch.tensor(15.)
-        
-        #self.slope_prior_mu = slope_prior_mu if slope_prior_mu is not None \
-        #    else torch.tensor(-0.15)
-        #self.slope_prior_sd = slope_prior_sd if slope_prior_sd is not None \
-        #    else torch.tensor(0.1)
+        self.init_top_prior_con = init_top_prior_con if init_top_prior_con is not None \
+                    else torch.tensor([25., 75.])
+        self.init_bottom_prior_con = init_bottom_prior_con if init_bottom_prior_con is not None \
+                    else torch.tensor([4., 96.])
+                
+        self.init_ee50_prior_mu = init_ee50_prior_mu if init_ee50_prior_mu is not None \
+                    else torch.tensor(-50.)
+        self.init_ee50_prior_sd = init_ee50_prior_sd if init_ee50_prior_sd is not None \
+                    else torch.tensor(15.)
+                
+        self.init_slope_prior_mu = init_slope_prior_mu if init_slope_prior_mu is not None \
+                    else torch.tensor(-0.15)
+        self.init_slope_prior_sd = init_slope_prior_sd if init_slope_prior_sd is not None \
+                    else torch.tensor(0.1)
+                
+        self.top_prior_con = self.init_top_prior_con.detach().clone()
+        self.bottom_prior_con = self.init_bottom_prior_con.detach().clone()
+        self.ee50_prior_mu = self.init_ee50_prior_mu.detach().clone()
+        self.ee50_prior_sd = self.init_ee50_prior_sd.detach().clone()
+        self.slope_prior_mu = self.init_slope_prior_mu.detach().clone()
+        self.slope_prior_sd = self.init_slope_prior_sd.detach().clone()
 
         #top_prior_con_1 = 25. * torch.ones(n_parallel, 1)
         #top_prior_con_2 = 75. * torch.ones(n_parallel, 1)
         #bottom_prior_con_1 = 4. * torch.ones(n_parallel, 1)
         #bottom_prior_con_2 = 96. * torch.ones(n_parallel, 1)
 
-        top_prior_con = torch.ones(n_parallel, 1, 2)
-        top_prior_con[..., 0] = 25
-        top_prior_con[..., 1] = 75
+        #top_prior_con = torch.ones(n_parallel, 1, 2)
+        #top_prior_con[..., 0] = 25
+        #top_prior_con[..., 1] = 75
 
-        bottom_prior_con = torch.ones(n_parallel, 1, 2)
-        bottom_prior_con[..., 0] = 25
-        bottom_prior_con[..., 1] = 75
+        #bottom_prior_con = torch.ones(n_parallel, 1, 2)
+        #bottom_prior_con[..., 0] = 25
+        #bottom_prior_con[..., 1] = 75
 
-        ee50_prior_mu, ee50_prior_sd = -50. * torch.ones(n_parallel, 1), 15. * torch.ones(n_parallel, 1)
-        slope_prior_mu, slope_prior_sd = -0.15 * torch.ones(n_parallel, 1), 0.1 * torch.ones(n_parallel, 1)
+        #ee50_prior_mu, ee50_prior_sd = -50. * torch.ones(n_parallel, 1), 15. * torch.ones(n_parallel, 1)
+        #slope_prior_mu, slope_prior_sd = -0.15 * torch.ones(n_parallel, 1), 0.1 * torch.ones(n_parallel, 1)
 
-        self.top_prior_con = top_prior_con
-        self.bottom_prior_con = bottom_prior_con
-        self.ee50_prior_mu = ee50_prior_mu
-        self.ee50_prior_sd = ee50_prior_sd
-        self.slope_prior_mu = slope_prior_mu
-        self.slope_prior_sd = slope_prior_sd
+        #self.top_prior_con = top_prior_con
+        #self.bottom_prior_con = bottom_prior_con
+        #self.ee50_prior_mu = ee50_prior_mu
+        #self.ee50_prior_sd = ee50_prior_sd
+        #self.slope_prior_mu = slope_prior_mu
+        #self.slope_prior_sd = slope_prior_sd
+        
         self.obs_label = obs_label
         self.n_parallel = n_parallel
         self.var_names = ["top", "bottom", "ee50", "slope"]
@@ -424,43 +432,50 @@ class DockingModel(ExperimentModel):
 
         return model
     
-    def reset(self, n_parallel, top_prior_con=None, bottom_prior_con=None, ee50_prior_mu=None, ee50_prior_sd=None, slope_prior_mu=None,
-            slope_prior_sd=None):
+    def reset(self, n_parallel, init_top_prior_con=None, init_bottom_prior_con=None, init_ee50_prior_mu=None, init_ee50_prior_sd=None, init_slope_prior_mu=None,
+            init_slope_prior_sd=None):
             if n_parallel is not None:
-                #self.top_prior_con = top_prior_con if top_prior_con is not None \
-                #    else torch.tensor([25., 75.])
-                #self.bottom_prior_con = bottom_prior_con if bottom_prior_con is not None \
-                #    else torch.tensor([4., 96.])
+                self.init_top_prior_con = init_top_prior_con if init_top_prior_con is not None \
+                    else torch.tensor([25., 75.])
+                self.init_bottom_prior_con = init_bottom_prior_con if init_bottom_prior_con is not None \
+                    else torch.tensor([4., 96.])
                 
-                #self.ee50_prior_mu = ee50_prior_mu if ee50_prior_mu is not None \
-                #    else torch.tensor(-50.)
-                #self.ee50_prior_sd = ee50_prior_sd if ee50_prior_sd is not None \
-                #    else torch.tensor(15.)
+                self.init_ee50_prior_mu = init_ee50_prior_mu if init_ee50_prior_mu is not None \
+                    else torch.tensor(-50.)
+                self.init_ee50_prior_sd = init_ee50_prior_sd if init_ee50_prior_sd is not None \
+                    else torch.tensor(15.)
                 
-                #self.slope_prior_mu = slope_prior_mu if slope_prior_mu is not None \
-                #    else torch.tensor(-0.15)
-                #self.slope_prior_sd = slope_prior_sd if slope_prior_sd is not None \
-                #    else torch.tensor(0.1)
+                self.init_slope_prior_mu = init_slope_prior_mu if init_slope_prior_mu is not None \
+                    else torch.tensor(-0.15)
+                self.init_slope_prior_sd = init_slope_prior_sd if init_slope_prior_sd is not None \
+                    else torch.tensor(0.1)
                 
-                top_prior_con = torch.ones(n_parallel, 1, 2)
-                top_prior_con[..., 0] = 25
-                top_prior_con[..., 1] = 75
+                self.top_prior_con = self.init_top_prior_con.detach().clone()
+                self.bottom_prior_con = self.init_bottom_prior_con.detach().clone()
+                self.ee50_prior_mu = self.init_ee50_prior_mu.detach().clone()
+                self.ee50_prior_sd = self.init_ee50_prior_sd.detach().clone()
+                self.slope_prior_mu = self.init_slope_prior_mu.detach().clone()
+                self.slope_prior_sd = self.init_slope_prior_sd.detach().clone()
 
-                bottom_prior_con = torch.ones(n_parallel, 1, 2)
-                bottom_prior_con[..., 0] = 25
-                bottom_prior_con[..., 1] = 75
+                #top_prior_con = torch.ones(n_parallel, 1, 2)
+                #top_prior_con[..., 0] = 25
+                #top_prior_con[..., 1] = 75
 
-                ee50_prior_mu, ee50_prior_sd = -50. * torch.ones(n_parallel, 1), 15. * torch.ones(n_parallel, 1)
-                slope_prior_mu, slope_prior_sd = -0.15 * torch.ones(n_parallel, 1), 0.1 * torch.ones(n_parallel, 1)
+                #bottom_prior_con = torch.ones(n_parallel, 1, 2)
+                #bottom_prior_con[..., 0] = 25
+                #bottom_prior_con[..., 1] = 75
 
-                self.top_prior_con = top_prior_con
-                self.bottom_prior_con = bottom_prior_con
-                self.ee50_prior_mu = ee50_prior_mu
-                self.ee50_prior_sd = ee50_prior_sd
-                self.slope_prior_mu = slope_prior_mu
-                self.slope_prior_sd = slope_prior_sd
+                #ee50_prior_mu, ee50_prior_sd = -50. * torch.ones(n_parallel, 1), 15. * torch.ones(n_parallel, 1)
+                #slope_prior_mu, slope_prior_sd = -0.15 * torch.ones(n_parallel, 1), 0.1 * torch.ones(n_parallel, 1)
+
+                #self.top_prior_con = top_prior_con
+                #self.bottom_prior_con = bottom_prior_con
+                #self.ee50_prior_mu = ee50_prior_mu
+                #self.ee50_prior_sd = ee50_prior_sd
+                #self.slope_prior_mu = slope_prior_mu
+                #self.slope_prior_sd = slope_prior_sd
                 
-####################
+#################### NOT COMPLETE ####################
 
 class PharmacoModel(ExperimentModel):
     def __init__(self, D_v=400., p=3, theta_loc=None, theta_covmat=None, epsilon_scale=None, nu_scale=None, n_parallel=1, obs_label="y"):

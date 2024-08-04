@@ -78,22 +78,26 @@ xi, yi = np.meshgrid(xi, yi)
 
 #cmap, norm = mcolors.from_levels_and_colors[0, 2, 5, 6], ['red', 'green', 'blue']
 
-# Plot the points and the intensity map
-plt.figure(figsize=(10, 6))
-scatter = plt.scatter(x, y, c=np.linspace(1, 30, len(scaled_actions)), cmap='viridis', label='Designs')
-plt.colorbar(scatter, label='Experiment Order')
-#plt.contourf(xi, yi, intensity, levels=50, cmap='hot', alpha=0.4)
+# Plot setup
+fig, ax = plt.subplots(figsize=(8, 4.8))
+scatter = ax.scatter(x, y, c=np.linspace(1, 30, len(scaled_actions)), cmap='viridis', label='Designs')
+ax.scatter([theta1[0], theta2[0]], [theta1[1], theta2[1]], color='blue', label='Objects', marker='x')
+ax.set_xlim((-4, 4))
+ax.set_ylim((-4, 4))
+ax.set_title("2D Location Finding with 2 Objects")
+ax.legend()
 
-# Mark the points theta1 and theta2
-plt.scatter([theta1[0], theta2[0]], [theta1[1], theta2[1]], color='blue', label='Locations', marker='x')
+# Add colorbar below the plot
+cbar = plt.colorbar(scatter, ax=ax, orientation='horizontal', fraction=0.03, pad=0.08)
+cbar.set_label('Experiment Order')
 
 plt.xlim((-4, 4))
 plt.ylim((-4, 4))
 
 # Adding titles and labels
-plt.title("Location Finding")
+plt.title("2D Location Finding with 2 Objects")
 #plt.xlabel('X-axis')
 #plt.ylabel('Y-axis')
 plt.legend()
-plt.savefig("location_finding.pdf")
+plt.savefig("location_finding.pdf", transparent=True, bbox_inches="tight")
 #plt.show()

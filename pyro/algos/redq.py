@@ -489,7 +489,7 @@ class REDQ(RLAlgorithm):
         """
         obs = samples_data["observation"]
         mask = samples_data["mask"]
-        
+
         # Train critic
         qf_losses = self._critic_objective(samples_data)
         for i in range(len(qf_losses)):
@@ -500,8 +500,7 @@ class REDQ(RLAlgorithm):
         # Train actor
         action_dists = self.policy(obs, mask)[0]
         if hasattr(action_dists, "rsample_with_pre_tanh_value"):
-            new_actions_pre_tanh, new_actions = (
-                action_dists.rsample_with_pre_tanh_value())
+            new_actions_pre_tanh, new_actions = (action_dists.rsample_with_pre_tanh_value())
             log_pi_new_actions = action_dists.log_prob(value=new_actions, pre_tanh_value=new_actions_pre_tanh)
         else:
             new_actions = None
