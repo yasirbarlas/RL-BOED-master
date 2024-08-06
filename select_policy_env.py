@@ -98,7 +98,7 @@ def main(src, results, dest, n_contrastive_samples, n_parallel,
     rep = n_samples // env.env.n_parallel
     print(f"{n_samples} / {env.env.n_parallel} = {rep} iterations to run")
     t0 = time()
-    random = False
+    random = True
     if results is None:
         times = []
         for j in range(rep):
@@ -111,13 +111,13 @@ def main(src, results, dest, n_contrastive_samples, n_parallel,
                 mask = torch.ones_like(obs, dtype=torch.bool)[..., :1]
                 ts = time()
                 # Randomly choose a policy to use, and use the sampled action from that policy (generally best performance)
-                #if isinstance(algo, SUNRISE):
-                #    acts = []
-                #    for i in range(len(pis)):
-                #        actd, dist_info = pis[i].get_actions(obs, mask=mask)
-                #        acts.append(actd)
-                #    acti = np.random.choice(len(acts))
-                #    act = acts[acti]
+                if isinstance(algo, SUNRISE):
+                    acts = []
+                    for i in range(len(pis)):
+                        actd, dist_info = pis[i].get_actions(obs, mask=mask)
+                        acts.append(actd)
+                    acti = np.random.choice(len(acts))
+                    act = acts[acti]
                 # Combine policy distributions by taking the mean of the means, and the mean of the standard deviations
                 # Combine as a TanhNormal distribution, and sample an action from that distribution (slightly better than below method)
                 #if isinstance(algo, SUNRISE):
@@ -132,13 +132,13 @@ def main(src, results, dest, n_contrastive_samples, n_parallel,
                 #    distrib = TanhNormal(torch.mean(stacked_mean_tensors, dim=0), torch.mean(stacked_std_tensors, dim=0))
                 #    act = distrib.sample()
                 # Calculate the mean of the policy distribution means, and use that as the action (as in paper, having worst performance)
-                if isinstance(algo, SUNRISE):
-                    means = []
-                    for i in range(len(pis)):
-                        _, dist_info = pis[i].get_actions(obs, mask=mask)
-                        means.append(dist_info["mean"])
-                    stacked_tensors = torch.stack(means)
-                    act = torch.mean(stacked_tensors, dim=0)
+                #if isinstance(algo, SUNRISE):
+                #    means = []
+                #    for i in range(len(pis)):
+                #        _, dist_info = pis[i].get_actions(obs, mask=mask)
+                #        means.append(dist_info["mean"])
+                #    stacked_tensors = torch.stack(means)
+                #    act = torch.mean(stacked_tensors, dim=0)
                 else:
                     act, dist_info = pi.get_actions(obs, mask=mask)
                 te = time()
