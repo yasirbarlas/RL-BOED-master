@@ -2,6 +2,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
+# https://arxiv.org/abs/1904.06979
 def compute_central_tendency_and_error(id_central, id_error, sample):
 
     try:
@@ -56,10 +57,30 @@ width, height = (10, 6)
 #title_template = "Location Finding: Dropout Q-Functions"
 #file_template = "droq_new_central_tend"
 
-folders = ["../source_redq_results.npz", "../source_discount0.99_results.npz", "../source_ensemble10_results.npz", "../source_tau0.01_results.npz"]
+#folders = ["../source_redq_results.npz", "../source_discount0.99_results.npz", "../source_ensemble10_results.npz", "../source_tau0.01_results.npz"]
+#labels = ["REDQ-Blau", "REDQ-Disc-0.99", "REDQ-Ens-10", "REDQ-Tau-0.01"]
+#title_template = "Location Finding: Randomised Ensembled Double Q-Learning"
+#file_template = "redq_new_central_tend"
+
+#folders = ["../ces_sunrise10_results.npz", "../ces_sunrise20_results.npz"]
+#labels = ["SUNRISE-10", "SUNRISE-20"]
+#title_template = "Constant Elasticity of Substitution: SUNRISE"
+#file_template = "ces_sunrise_new_central_tend"
+
+#folders = ["../ces_sbr300000_results.npz", "../ces_sbr430000_results.npz"]
+#labels = ["SBR-300000", "SBR-430000"]
+#title_template = "Constant Elasticity of Substitution: Scaled-by-Resetting"
+#file_template = "ces_sbr_new_central_tend"
+
+#folders = ["../ces_droq0.01_results.npz", "../ces_droq0.1_results.npz"]
+#labels = ["DroQ-0.01", "DroQ-0.1"]
+#title_template = "Constant Elasticity of Substitution: Dropout Q-Functions"
+#file_template = "ces_droq_new_central_tend"
+
+folders = ["../ces_redq_results.npz", "../ces_discount0.99_results.npz", "../ces_ensemble10_results.npz", "../ces_tau0.01_results.npz"]
 labels = ["REDQ-Blau", "REDQ-Disc-0.99", "REDQ-Ens-10", "REDQ-Tau-0.01"]
-title_template = "Location Finding: Randomised Ensembled Double Q-Learning"
-file_template = "redq_new_central_tend"
+title_template = "Constant Elasticity of Substitution: Randomised Ensembled Double Q-Learning"
+file_template = "ces_redq_new_central_tend"
 
 step = 50
 L = 1e5
@@ -67,8 +88,10 @@ err_bar = "se"
 #plt.figure(figsize=(width, height), dpi=fig_dpi)
 fig, ax = plt.subplots(figsize=(width, height), dpi=fig_dpi)
 
-inset_position = [0.3, 0.28, 4, 2]  # [x0, y0, width, height]
-#inset_position = [0.1, 0.05, 3, 1]  # [x0, y0, width, height]
+#inset_position = [0.3, 0.28, 4, 2]  # [x0, y0, width, height] # other source
+#inset_position = [0.1, 0.05, 3, 1]  # [x0, y0, width, height] # sbr source
+inset_position = [0.3, 0.28, 4, 2]  # [x0, y0, width, height] # other ces
+#inset_position = [0.1, 0.10, 4, 2]  # [x0, y0, width, height] # sbr ces
 ax_inset = inset_axes(ax, width=inset_position[2], height=inset_position[3], loc='lower left',
                       bbox_to_anchor=(inset_position[0], inset_position[1], 
                                       inset_position[2], inset_position[3]), 
@@ -133,11 +156,14 @@ ax.grid()
 ax.legend(loc="lower right")
 
 ax_inset.set_xlim(15000, 20000)
-ax_inset.set_ylim(10, 11.5)
-#ax_inset.set_ylim(10, 11)
-ax_inset.set_xticks([15000, 17500, 20000])
-ax_inset.set_yticks([10, 11.5])
-#ax_inset.set_yticks([10, 11])
+ax_inset.set_ylim(10, 11.5) # other source, other ces
+#ax_inset.set_ylim(10, 11) # sbr source
+#ax_inset.set_ylim(10.5, 11.5) # droq ces
+#ax_inset.set_xticks([15000, 17500, 20000])
+ax_inset.set_yticks([10, 11.5]) # other source, other ces
+#ax_inset.set_yticks([10, 11]) # sbr source
+#ax_inset.set_yticks([10.5, 11.5]) # droq ces
+
 #ax_inset.grid()
 
 ax_inset.set_title("Zoomed In", fontsize=10)
