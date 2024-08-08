@@ -98,7 +98,7 @@ def main(src, results, dest, n_contrastive_samples, n_parallel,
     rep = n_samples // env.env.n_parallel
     print(f"{n_samples} / {env.env.n_parallel} = {rep} iterations to run")
     t0 = time()
-    random = True
+    random = False
     if results is None:
         times = []
         for j in range(rep):
