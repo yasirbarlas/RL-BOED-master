@@ -3,6 +3,8 @@ import matplotlib.colors as mcolors
 import numpy as np
 import torch
 
+# Seeds are 10, 50, 100 for evaluation time in select_policy_env.py
+
 # Example with K = 2 and SUNRISE-20
 # thetas = [[-0.1029,  1.6810],
 #           [-0.2708, -0.5432]]

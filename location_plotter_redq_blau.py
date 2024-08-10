@@ -46,6 +46,8 @@ import torch
 #                     [-4.2588e-02, -3.3409e-01], [-0.6398,  0.3078], [ 0.0212,  0.1317], [-0.2394,  0.0183], [-0.4861,  0.3863],
 #                     [ 0.5594,  0.0961], [-0.2637,  0.3796]]
 
+# Seeds are 10, 50, 100 for evaluation time in select_policy_env.py
+
 # Example with K = 2 and REDQ-Blau
 # thetas = [[-0.1029,  1.6810], [-0.2708, -0.5432]]
 
