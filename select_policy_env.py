@@ -104,6 +104,7 @@ def main(src, results, dest, n_contrastive_samples, n_parallel,
         for j in range(rep):
             print(f"iteration {j}")
             obs, _ = env.reset(n_parallel=n_parallel)
+            print("\n", env.env.theta0['theta'], "\n")
             # print("\n", env.env.theta0['theta'][0, 0], "\n")
             # print("\n", env.env.theta0['a'][0, 0], "\n")
             rewards.append([])
@@ -113,8 +114,8 @@ def main(src, results, dest, n_contrastive_samples, n_parallel,
                 # Randomly choose a policy to use, and use the sampled action from that policy (generally best performance)
                 if isinstance(algo, SUNRISE):
                     acts = []
-                    for i in range(len(pis)):
-                        actd, dist_info = pis[i].get_actions(obs, mask=mask)
+                    for iii in range(len(pis)):
+                        actd, dist_info = pis[iii].get_actions(obs, mask=mask)
                         acts.append(actd)
                     acti = np.random.choice(len(acts))
                     act = acts[acti]
@@ -158,6 +159,7 @@ def main(src, results, dest, n_contrastive_samples, n_parallel,
                         torch.zeros_like(low), torch.ones_like(high))
                     act = act_dist.sample((n_parallel,))/8.
                 act = act.reshape(env.env.n_parallel, 1, 1, -1)
+                print(f"action_{i}, {act} \n")
                 # print(dist_info['logits'].topk(10))
                 # print(f"act {act[0] * 4}")
                 # print(f"mean {dist_info['mean'][0] * 4}")
