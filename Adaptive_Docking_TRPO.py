@@ -182,7 +182,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--id", default="1", type=int)
     parser.add_argument("--n-parallel", default="100", type=int)
-    parser.add_argument("--budget", default="30", type=int)
+    parser.add_argument("--budget", default="20", type=int)
     parser.add_argument("--n-rl-itr", default="50", type=int)
     parser.add_argument("--n-contr-samples", default="10", type=int)
     parser.add_argument("--log-dir", default=None, type=str)
@@ -192,7 +192,7 @@ if __name__ == "__main__":
     parser.add_argument("--bound-type", default="terminal", type=str.lower,
                         choices=["lower", "upper", "terminal"])
     parser.add_argument("--discount", default="0.99", type=float)
-    parser.add_argument("--d", default="6", type=int)
+    parser.add_argument("--d", default="1", type=int)
     parser.add_argument("--vf-lr", default="3e-4", type=float)
     parser.add_argument("--minibatch-size", default="4096", type=int)
     parser.add_argument("--entropy-method", default="no_entropy", type=str.lower,

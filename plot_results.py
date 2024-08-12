@@ -168,4 +168,4 @@ ax_inset.set_yticks([10, 11.5]) # other source, other ces
 
 ax_inset.set_title("Zoomed In", fontsize=10)
 
-plt.savefig(f"training_{file_template}.pdf", transparent=True, bbox_inches="tight")
+plt.savefig(f"Training-Plots/training_{file_template}.pdf", transparent=True, bbox_inches="tight")
