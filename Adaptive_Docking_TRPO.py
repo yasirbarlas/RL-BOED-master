@@ -72,9 +72,7 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
             logger.log("creating new policy")
             layer_size = 128
             design_space = BatchBox(low=-75., high=0., shape=(1, 1, 1, d))
-            obs_space = BatchBox(low=torch.as_tensor([-75.] * 2 * d),
-                                 high=torch.as_tensor([1.] * 2 * d)
-                                 )
+            obs_space = BatchBox(low=torch.as_tensor([-75.] * d + [-70.]), high=torch.as_tensor([1.] * d + [2.]))
             model = DockingModel(n_parallel=n_parallel, d=d)
 
             def make_env(design_space, obs_space, model, budget, n_cont_samples,
