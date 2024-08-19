@@ -42,6 +42,11 @@ fig_dpi = 100
 width, height = (10, 6)
 #titlesize = 20
 
+folders = ["../source_droq0.01_results.npz", "../source_sunrise20_results.npz", "../source_sunrise20_droq0.01_tau0.01_results.npz"]
+labels = ["DroQ-0.01", "SUNRISE-20", "Ours"]
+title_template = "Location Finding: Combination of Algorithms"
+file_template = "combination_new_central_tend"
+
 #folders = ["../source_sunrise10_results.npz", "../source_sunrise20_results.npz"]
 #labels = ["SUNRISE-10", "SUNRISE-20"]
 #title_template = "Location Finding: SUNRISE"
@@ -77,10 +82,10 @@ width, height = (10, 6)
 #title_template = "Constant Elasticity of Substitution: Dropout Q-Functions"
 #file_template = "ces_droq_new_central_tend"
 
-folders = ["../ces_redq_results.npz", "../ces_discount0.99_results.npz", "../ces_ensemble10_results.npz", "../ces_tau0.01_results.npz"]
-labels = ["REDQ-Blau", "REDQ-Disc-0.99", "REDQ-Ens-10", "REDQ-Tau-0.01"]
-title_template = "Constant Elasticity of Substitution: Randomised Ensembled Double Q-Learning"
-file_template = "ces_redq_new_central_tend"
+# folders = ["../ces_redq_results.npz", "../ces_discount0.99_results.npz", "../ces_ensemble10_results.npz", "../ces_tau0.01_results.npz"]
+# labels = ["REDQ-Blau", "REDQ-Disc-0.99", "REDQ-Ens-10", "REDQ-Tau-0.01"]
+# title_template = "Constant Elasticity of Substitution: Randomised Ensembled Double Q-Learning"
+# file_template = "ces_redq_new_central_tend"
 
 step = 50
 L = 1e5

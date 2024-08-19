@@ -27,6 +27,11 @@ sunrise = [0.7856,  1.6404,  2.5233,  3.3307,  4.0579,  4.7467,  5.3697,  5.9775
            9.7627, 10.0127, 10.2636, 10.4910, 10.6815, 10.8694, 11.0285, 11.1780,
            11.3098, 11.4427, 11.5553, 11.6534, 11.7489, 11.8374]
 
+ours = [0.8012,  1.6464,  2.5312,  3.3227,  4.0628,  4.7482,  5.3737,  5.9713,
+        6.5137,  7.0443,  7.5109,  7.9583,  8.3836,  8.7799,  9.1096,  9.4087,
+        9.7098,  9.9729, 10.2202, 10.4459, 10.6298, 10.8156, 10.9718, 11.1145,
+        11.2447, 11.3691, 11.4772, 11.5763, 11.6754, 11.7696]
+
 random = [0.7989, 1.4600, 2.0370, 2.5387, 2.9800, 3.3669, 3.7184, 4.0286, 4.3166,
           4.5835, 4.8247, 5.0542, 5.2550, 5.4490, 5.6282, 5.7971, 5.9582, 6.1014,
           6.2471, 6.3774, 6.5057, 6.6296, 6.7486, 6.8600, 6.9671, 7.0731, 7.1730,
@@ -39,6 +44,7 @@ ax.plot(x, redq, label="REDQ")
 ax.plot(x, sbr, label="SBR")
 ax.plot(x, droq, label="DroQ")
 ax.plot(x, sunrise, label="SUNRISE")
+ax.plot(x, ours, label="Ours")
 ax.plot(x, random, label="Random")
 ax.set_xlim(0, T)
 ax.set_xlabel("Experiment")
@@ -57,6 +63,7 @@ ax_inset.plot(x, redq, label="REDQ")
 ax_inset.plot(x, sbr, label="SBR")
 ax_inset.plot(x, droq, label="DroQ")
 ax_inset.plot(x, sunrise, label="SUNRISE")
+ax_inset.plot(x, ours, label="Ours")
 ax_inset.plot(x, random, label="Random")
 
 ax_inset.set_xlim(20, 30)
