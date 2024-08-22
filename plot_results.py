@@ -42,10 +42,20 @@ fig_dpi = 100
 width, height = (10, 6)
 #titlesize = 20
 
-folders = ["../source_droq0.01_results.npz", "../source_sunrise20_results.npz", "../source_sunrise20_droq0.01_tau0.01_results.npz"]
-labels = ["DroQ-0.01", "SUNRISE-20", "Ours"]
-title_template = "Location Finding: Combination of Algorithms"
-file_template = "combination_new_central_tend"
+folders = ["../docking_redq_results.npz", "../docking_sbr430000_results.npz", "../docking_droq0.01_results.npz", "../docking_sunrise20_results.npz"]
+labels = ["REDQ-Blau", "SBR-430000", "DroQ-0.01", "SUNRISE-20"]
+title_template = "Biomolecular Docking: Trained Algorithms"
+file_template = "docking_combination_new_central_tend"
+
+#folders = ["../ces_droq0.1_results.npz", "../ces_sunrise10_results.npz", "../ces_sunrise10_droq0.1_tau0.01_results.npz"]
+#labels = ["DroQ-0.1", "SUNRISE-10", "Ours"]
+#title_template = "Constant Elasticity of Substitution: Combination of Algorithms"
+#file_template = "ces_combination_new_central_tend"
+
+#folders = ["../source_droq0.01_results.npz", "../source_sunrise20_results.npz", "../source_sunrise20_droq0.01_tau0.01_results.npz"]
+#labels = ["DroQ-0.01", "SUNRISE-20", "Ours"]
+#title_template = "Location Finding: Combination of Algorithms"
+#file_template = "combination_new_central_tend"
 
 #folders = ["../source_sunrise10_results.npz", "../source_sunrise20_results.npz"]
 #labels = ["SUNRISE-10", "SUNRISE-20"]
@@ -82,10 +92,10 @@ file_template = "combination_new_central_tend"
 #title_template = "Constant Elasticity of Substitution: Dropout Q-Functions"
 #file_template = "ces_droq_new_central_tend"
 
-# folders = ["../ces_redq_results.npz", "../ces_discount0.99_results.npz", "../ces_ensemble10_results.npz", "../ces_tau0.01_results.npz"]
-# labels = ["REDQ-Blau", "REDQ-Disc-0.99", "REDQ-Ens-10", "REDQ-Tau-0.01"]
-# title_template = "Constant Elasticity of Substitution: Randomised Ensembled Double Q-Learning"
-# file_template = "ces_redq_new_central_tend"
+#folders = ["../ces_redq_results.npz", "../ces_discount0.99_results.npz", "../ces_ensemble10_results.npz", "../ces_tau0.01_results.npz"]
+#labels = ["REDQ-Blau", "REDQ-Disc-0.99", "REDQ-Ens-10", "REDQ-Tau-0.01"]
+#title_template = "Constant Elasticity of Substitution: Randomised Ensembled Double Q-Learning"
+#file_template = "ces_redq_new_central_tend"
 
 step = 50
 L = 1e5
@@ -97,10 +107,10 @@ fig, ax = plt.subplots(figsize=(width, height), dpi=fig_dpi)
 #inset_position = [0.1, 0.05, 3, 1]  # [x0, y0, width, height] # sbr source
 inset_position = [0.3, 0.28, 4, 2]  # [x0, y0, width, height] # other ces
 #inset_position = [0.1, 0.10, 4, 2]  # [x0, y0, width, height] # sbr ces
-ax_inset = inset_axes(ax, width=inset_position[2], height=inset_position[3], loc='lower left',
-                      bbox_to_anchor=(inset_position[0], inset_position[1], 
-                                      inset_position[2], inset_position[3]), 
-                      bbox_transform=ax.transAxes)
+#ax_inset = inset_axes(ax, width=inset_position[2], height=inset_position[3], loc='lower left',
+#                      bbox_to_anchor=(inset_position[0], inset_position[1], 
+#                                      inset_position[2], inset_position[3]), 
+#                      bbox_transform=ax.transAxes)
 
 for ig, folder in enumerate(folders):
     data = np.load(folder)
@@ -123,7 +133,7 @@ for ig, folder in enumerate(folders):
 
     xlim, ylim = [0, 20001], [0, 12]
     ax.plot(np.arange(0, means.size), central, label = labels[ig], alpha=0.5)
-    ax_inset.plot(np.arange(0, means.size), central, label = labels[ig], alpha=0.5)
+    #ax_inset.plot(np.arange(0, means.size), central, label = labels[ig], alpha=0.5)
     if err_bar in ["std", "se"]:
         stds = data['rstds'].astype(np.float64).reshape((-1,))
         stds = np.array_split(stds, 10)
@@ -151,26 +161,27 @@ for ig, folder in enumerate(folders):
     #	np.arange(0, means.size), low, high, alpha=0.5, label = "Standard Error"
     #)
 
-ax.hlines(np.log(L+1), xmin=xlim[0], xmax=xlim[1], color="black", linestyles='dashed', label = "log(100001)")
+#ax.hlines(np.log(L+1), xmin=xlim[0], xmax=xlim[1], color="black", linestyles='dashed', label = "log(100001)")
+
 #print(means[-10:])
 ax.set_xlabel("Iterations")
 ax.set_ylabel("sPCE")
 ax.set_title(f"{title_template}")
-ax.set_yticks([0, 2, 4, 6, 8, 10, 12])
+#ax.set_yticks([0, 2, 4, 6, 8, 10, 12])
 ax.grid()
 ax.legend(loc="lower right")
 
-ax_inset.set_xlim(15000, 20000)
-ax_inset.set_ylim(10, 11.5) # other source, other ces
+#ax_inset.set_xlim(15000, 20000)
+#ax_inset.set_ylim(10, 11.5) # other source, other ces
 #ax_inset.set_ylim(10, 11) # sbr source
 #ax_inset.set_ylim(10.5, 11.5) # droq ces
 #ax_inset.set_xticks([15000, 17500, 20000])
-ax_inset.set_yticks([10, 11.5]) # other source, other ces
+#ax_inset.set_yticks([10, 11.5]) # other source, other ces
 #ax_inset.set_yticks([10, 11]) # sbr source
 #ax_inset.set_yticks([10.5, 11.5]) # droq ces
 
 #ax_inset.grid()
 
-ax_inset.set_title("Zoomed In", fontsize=10)
+#ax_inset.set_title("Zoomed In", fontsize=10)
 
 plt.savefig(f"Training-Plots/training_{file_template}.pdf", transparent=True, bbox_inches="tight")
