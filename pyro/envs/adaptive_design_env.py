@@ -107,6 +107,10 @@ class AdaptiveDesignEnv(Env):
         logsumprod = torch.logsumexp(self.log_products, dim=0)
         if self.bound_type in [LOWER, UPPER]:
             reward = log_prob0 + self.last_logsumprod - logsumprod
+            #print("reward", reward)
+            #print("log_prob0", log_prob0)
+            #print("logsumprod", logsumprod)
+            #print("last_logsumprod", self.last_logsumprod)
         elif self.bound_type == TERMINAL:
             if self.terminal():
                 reward = self.log_products[0] - logsumprod + \
