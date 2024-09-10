@@ -4,6 +4,7 @@ import numpy as np
 import torch
 
 # Seeds are 10, 50, 100 for evaluation time in select_policy_env.py
+# Uncomment each set as required
 
 # Example with K = 2 and SBR-430000
 # thetas = [[-0.1029,  1.6810],
