@@ -8,7 +8,7 @@ The code presented here is an updated version of the work found in the [RL-BOED]
 
 ## Data
 
-Our trained agents, alongside their results at evaluation time, can be found [here](https://cityuni-my.sharepoint.com/:f:/g/personal/yasir-zubayr_barlas_city_ac_uk/EpDON-jNQRlElzC_crrOVd8BLTZeAa3YfN-BfrNehvAiCA?e=gRNk9z). Each folder beginning with 'boed_results' represents a set of 10 agents, each trained on a unique random seed. The agents are trained with a specific algorithm under a certain set of hyperparameters, and on a particular Bayesian experimental design problem. Folders with 'ces' are agents trained on the 'Constant Elasticity of Substitution' experiment, 'location' is the 'Location Finding' experiment, and 'docking' is the Biomolecular Docking experiment.
+Our trained agents, alongside their results at evaluation time, can be found [here](https://cityuni-my.sharepoint.com/:f:/g/personal/yasir-zubayr_barlas_city_ac_uk/EpDON-jNQRlElzC_crrOVd8BLTZeAa3YfN-BfrNehvAiCA?e=gRNk9z). Each folder beginning with 'boed_results' represents a set of 10 agents, each trained on a unique random seed. The agents are trained with a specific algorithm under a certain set of hyperparameters, and on a particular Bayesian experimental design problem. Folders with 'ces' are agents trained on the 'Constant Elasticity of Substitution' experiment, 'location' is the 'Location Finding' experiment, and 'docking' is the 'Biomolecular Docking' experiment.
 
 ### Requirements
 - Python 3.9+
