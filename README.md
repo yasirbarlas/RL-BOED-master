@@ -49,7 +49,7 @@ The CES model \citep{arrowchen} defines the utility $U(\boldsymbol{x})$ for a ba
 We use the following priors for $(\rho, \boldsymbol{\alpha}, u)$,
 $$\rho \sim \text{Beta}(1, 1),
 \boldsymbol{\alpha} \sim \text{Dirichlet}([1, 1, 1]),
-u \sim \text{Log-Normal}(1, 3^{2}).
+u \sim \text{Log-Normal}(1, 3^{2}).$$
 
 ### Biomolecular Docking
 
