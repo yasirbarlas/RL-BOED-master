@@ -31,6 +31,22 @@ The total intensity at point $\xi$ is the superposition of the individual intens
 
 For object $\theta_{i} \in \mathbb{R}^{d}$, its prior is given by $$\theta_{i} \sim \mathcal{N}_{d}(\boldsymbol{0}, I),$$ where $\boldsymbol{0}$ is the mean vector, and $I$ is the covariance matrix, an identity matrix, both with dimension $d$. For a given design $\xi$, the likelihood function is given by $$y \mid \boldsymbol{\theta}, \xi \sim \mathcal{N}(\log \mu(\boldsymbol{\theta}, \xi), \sigma^2).$$
 
+\begin{table}[H]
+    \centering
+    \begin{tabular}{cc}
+    \hline
+    Parameter & Value \\
+    \hline
+    $K$ & 2 \\
+    $d$ & 2 \\
+    $\alpha$ & 1 \\
+    $b$ & 0.1 \\
+    $m$ & 0.0001 \\
+    $\sigma$ & 0.5
+    \end{tabular}
+    \caption{Location Finding Training Environment Parameters}
+\end{table}
+
 ### Constant Elasticity of Substitution
 
 ### Biomolecular Docking
