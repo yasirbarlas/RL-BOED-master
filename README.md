@@ -19,7 +19,7 @@ Our trained agents, alongside their results at evaluation time, can be found [he
 
 ## Algorithms
 
-We explore [Randomised Ensembled Double Q-Learning (REDQ)](https://arxiv.org/abs/2101.05982), [Dropout Q-Functions for Doubly Efficient Reinforcement Learning (DroQ)](https://arxiv.org/abs/2110.02034), [Sample-Efficient Reinforcement Learning by Breaking the Replay Ratio Barrier (SBR)](https://openreview.net/forum?id=OpC-9aBBVJe), and [A Simple Unified Framework for Ensemble Learning in Deep Reinforcement Learning (SUNRISE)](https://arxiv.org/abs/2007.04938). These all extend the [Soft Actor-Critic](https://arxiv.org/abs/1812.05905) algorithm. [Proximal Policy Optimisation (PPO)](https://arxiv.org/abs/1707.06347) and [Trust Region Policy Optimisation (TRPO)](https://arxiv.org/abs/1502.05477) are two other algorithms that can be used.
+We explore [Randomised Ensembled Double Q-Learning (REDQ)](https://arxiv.org/abs/2101.05982), [Dropout Q-Functions for Doubly Efficient Reinforcement Learning (DroQ)](https://arxiv.org/abs/2110.02034), [Sample-Efficient Reinforcement Learning by Breaking the Replay Ratio Barrier (SBR)](https://openreview.net/forum?id=OpC-9aBBVJe), and [A Simple Unified Framework for Ensemble Learning in Deep Reinforcement Learning (SUNRISE)](https://arxiv.org/abs/2007.04938). These all extend the [Soft Actor-Critic (SAC)](https://arxiv.org/abs/1812.05905) algorithm. [Proximal Policy Optimisation (PPO)](https://arxiv.org/abs/1707.06347) and [Trust Region Policy Optimisation (TRPO)](https://arxiv.org/abs/1502.05477) are two other algorithms that can be used.
 
 ## Bayesian Experimental Design Problems
 
