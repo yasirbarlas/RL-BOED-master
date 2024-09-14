@@ -29,7 +29,7 @@ There are $K$ objects on a $d$-dimensional space, and in this experiment we need
 
 The total intensity at point $\xi$ is the superposition of the individual intensities for each object, $$\mu(\boldsymbol{\theta}, \xi) = b + \sum_{i = 1}^{K} \frac{\alpha}{m + ||\theta_{i} - \xi||^{2}},$$ where $\alpha$ is a constant, $b > 0$ is a constant controlling the background signal, and $m > 0$ is a constant controlling the maximum signal. The total intensity is then used in the likelihood function calculation.
 
-For object $\theta_{i} \in \mathbb{R}^{d}$, its prior is given by $$\theta_{i} \sim \mathcal{N}_{d}(\boldsymbol{0}, I),$$ where $\boldsymbol{0}$ is the mean vector, and $I$ is the covariance matrix, an identity matrix, both with dimension $d$. For a given design $\xi$, the likelihood function is given by $$ y \mid \boldsymbol{\theta}, \xi \sim \mathcal{N}(\log \mu(\boldsymbol{\theta}, \xi), \sigma^2).$$
+For object $\theta_{i} \in \mathbb{R}^{d}$, its prior is given by $$\theta_{i} \sim \mathcal{N}_{d}(\boldsymbol{0}, I),$$ where $\boldsymbol{0}$ is the mean vector, and $I$ is the covariance matrix, an identity matrix, both with dimension $d$. For a given design $\xi$, the likelihood function is given by $$y \mid \boldsymbol{\theta}, \xi \sim \mathcal{N}(\log \mu(\boldsymbol{\theta}, \xi), \sigma^2).$$
 
 ### Constant Elasticity of Substitution
 
