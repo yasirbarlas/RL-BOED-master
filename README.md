@@ -17,6 +17,10 @@ Optimal experimental design is the area dedicated to the optimal execution of ex
 
 Our trained agents, alongside their results at evaluation time, can be found [here](https://cityuni-my.sharepoint.com/:f:/g/personal/yasir-zubayr_barlas_city_ac_uk/EpDON-jNQRlElzC_crrOVd8BLTZeAa3YfN-BfrNehvAiCA?e=gRNk9z). Each folder beginning with 'boed_results' represents a set of 10 agents, each trained on a unique random seed. The agents are trained with a specific algorithm under a certain set of hyperparameters, and on a particular Bayesian experimental design problem. Folders with 'ces' are agents trained on the 'Constant Elasticity of Substitution' experiment, 'location' is the 'Location Finding' experiment, and 'docking' is the 'Biomolecular Docking' experiment.
 
+## Algorithms
+
+We explore [Randomised Ensembled Double Q-Learning (REDQ)](https://arxiv.org/abs/2101.05982), [Dropout Q-Functions for Doubly Efficient Reinforcement Learning (DroQ)](https://arxiv.org/abs/2110.02034), [Sample-Efficient Reinforcement Learning by Breaking the Replay Ratio Barrier (SBR)](https://openreview.net/forum?id=OpC-9aBBVJe), and [A Simple Unified Framework for Ensemble Learning in Deep Reinforcement Learning (SUNRISE)](https://arxiv.org/abs/2007.04938). These all extend the [Soft Actor-Critic](https://arxiv.org/abs/1812.05905) algorithm. [Proximal Policy Optimisation (PPO)](https://arxiv.org/abs/1707.06347) and [Trust Region Policy Optimisation (TRPO)](https://arxiv.org/abs/1502.05477) are two other algorithms that can be used.
+
 ## Bayesian Experimental Design Problems
 
 ### Location Finding
