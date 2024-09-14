@@ -58,7 +58,9 @@ Molecular docking \citep{Meng_XuanYu2011} explores how two or more molecular str
 
 The probability of outcome $y_{i}$ being a hit, given a docking score $\xi \in [-75, 0]$, is modelled as a sigmoid hit-rate model. We have $\boldsymbol{\theta} = (\textit{top}, \textit{bottom}, \textit{ee50}, \textit{slope})$, where 'top' is the maximum hit-percent, 'ee50' is the dock energy in kcal/mol at 'top'/2, 'slope' is the change in hit-percent at 'ee50' in hit-percent/(kcal/mol), and 'bottom' is the minimum hit-rate.
 
-We use the following priors for $(\textit{top}, \textit{bottom}, \textit{ee50}, \textit{slope})$: $$\textit{top} \sim \text{Beta}(25, 75), \textit{bottom} & \sim \text{Beta}(4, 96), \textit{ee50} \sim \mathcal{N}(-50, 15^{2}), \textit{slope} \sim \mathcal{N}(-0.15, 0.1^{2}).$$
+We use the following priors for $(\textit{top}, \textit{bottom}, \textit{ee50}, \textit{slope})$: $$\textit{top} \sim \text{Beta}(25, 75), \textit{bottom} \sim \text{Beta}(4, 96), \textit{ee50} \sim \mathcal{N}(-50, 15^{2}), \textit{slope} \sim \mathcal{N}(-0.15, 0.1^{2}).$$
+
+The likelihood function is Bernoulli distributed and provides a binary outcome as to whether or not the docking score leads to a hit. 1 means that there is a hit, and 0 means there is no-hit. For a given design $\xi$, the likelihood function is given by, $$y_{i} \mid \boldsymbol{\theta}, \xi \sim \text{Bernoulli} \bigg(\textit{bottom} + \frac{\textit{top} - \textit{bottom}}{1 + \exp\left(-\textit{slope}(\xi_{i} - \textit{ee50})\right)}\bigg).$$
 
 ## Code
 
