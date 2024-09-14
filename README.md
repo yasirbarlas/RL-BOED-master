@@ -46,10 +46,16 @@ We have two baskets $\boldsymbol{x}, \boldsymbol{x'} \in [0, 100]^{3}$ of goods,
 
 The CES model \citep{arrowchen} defines the utility $U(\boldsymbol{x})$ for a basket of goods $\boldsymbol{x}$ as, $$U(\boldsymbol{x}) = \left( \sum_{i} x_i^{\rho} \alpha_{i} \right)^{\frac{1}{\rho}},$$ where $\rho$ and $\boldsymbol{\alpha}$ are latent variables defined with the prior distributions explained below. This utility function, which is a measure of satisfaction in economic terms, is then used in the likelihood function calculation.
 
-We use the following priors for $(\rho, \boldsymbol{\alpha}, u)$,
+We use the following priors for $(\rho, \boldsymbol{\alpha}, u)$:
 $$\rho \sim \text{Beta}(1, 1),
 \boldsymbol{\alpha} \sim \text{Dirichlet}([1, 1, 1]),
 u \sim \text{Log-Normal}(1, 3^{2}).$$
+
+The likelihood function is the preference of the human on a sliding 0-1 scale, which is based on $U(\boldsymbol{x}) - U(\boldsymbol{x'})$. For a given design $\xi$, the likelihood function is given by, $$\mu_{\eta} & = u \cdot (U(\boldsymbol{x}) - U(\boldsymbol{x'})) \\
+\sigma_{\eta} & = \nu u \cdot (1 + \|\boldsymbol{x} - \boldsymbol{x'}\|) \\
+\eta & \sim \mathcal{N}(\mu_{\eta}, \sigma_{\eta}^{2}) \\
+y & = \text{clip}(s(\eta), \epsilon, 1 - \epsilon),$$
+where $\nu = 0.005$, $\epsilon = 2^{-22}$, and $s(x) = \frac{1}{1 + e^{-x}}$ is the sigmoid function. Notice that the normally distributed $\eta$ is passed through the sigmoid function, bounding $\eta \in [0, 1]$. Censoring/clipping is applied, which limits the distribution by setting values above $u = 1 - \epsilon$ to be equal to $1 - \epsilon$, and values below $l = \epsilon$ to be equal to $\epsilon$.
 
 ### Biomolecular Docking
 
