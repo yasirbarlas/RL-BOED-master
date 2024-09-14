@@ -54,6 +54,12 @@ where $\nu = 0.005$, $\epsilon = 2^{-22}$, and $s(x) = \frac{1}{1 + e^{-x}}$ is 
 
 ### Biomolecular Docking
 
+Molecular docking \citep{Meng_XuanYu2011} explores how two or more molecular structures interact with each other. When a compound and receptor bind, this is known as a `hit'. In this experiment, we need to select the most informative compounds to find the predicted binding affinity (docking score) ranges from which molecules would be picked for testing in an experiment.
+
+The probability of outcome $y_{i}$ being a hit, given a docking score $\xi \in [-75, 0]$, is modelled as a sigmoid hit-rate model. We have $\boldsymbol{\theta} = (\textit{top}, \textit{bottom}, \textit{ee50}, \textit{slope})$, where 'top' is the maximum hit-percent, 'ee50' is the dock energy in kcal/mol at 'top'/2, 'slope' is the change in hit-percent at 'ee50' in hit-percent/(kcal/mol), and 'bottom' is the minimum hit-rate.
+
+We use the following priors for $(\textit{top}, \textit{bottom}, \textit{ee50}, \textit{slope})$: $$\textit{top} \sim \text{Beta}(25, 75), \textit{bottom} & \sim \text{Beta}(4, 96), \textit{ee50} \sim \mathcal{N}(-50, 15^{2}), \textit{slope} \sim \mathcal{N}(-0.15, 0.1^{2}).$$
+
 ## Code
 
 ### File Structure
