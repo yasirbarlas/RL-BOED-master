@@ -47,12 +47,9 @@ We have two baskets $\boldsymbol{x}, \boldsymbol{x'} \in [0, 100]^{3}$ of goods,
 The CES model \citep{arrowchen} defines the utility $U(\boldsymbol{x})$ for a basket of goods $\boldsymbol{x}$ as, $$U(\boldsymbol{x}) = \left( \sum_{i} x_i^{\rho} \alpha_{i} \right)^{\frac{1}{\rho}},$$ where $\rho$ and $\boldsymbol{\alpha}$ are latent variables defined with the prior distributions explained below. This utility function, which is a measure of satisfaction in economic terms, is then used in the likelihood function calculation.
 
 We use the following priors for $(\rho, \boldsymbol{\alpha}, u)$,
-\vspace{-1ex}
-\begin{align*}
-\rho & \sim \text{Beta}(1, 1) \\
-\boldsymbol{\alpha} & \sim \text{Dirichlet}([1, 1, 1]) \\
-u & \sim \text{Log-Normal}(1, 3^{2}).
-\end{align*}
+$$\rho \sim \text{Beta}(1, 1) \\
+\boldsymbol{\alpha} \sim \text{Dirichlet}([1, 1, 1]) \\
+u \sim \text{Log-Normal}(1, 3^{2}).$$
 
 ### Biomolecular Docking
 
