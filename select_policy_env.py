@@ -215,7 +215,9 @@ def main(src, results, dest, n_contrastive_samples, n_parallel,
             src,
             str(sum_rewards.mean().item()),
             str(sum_rewards.std().item() / np.sqrt(sum_rewards.numel())),
-            str(cumsum_rewards.transpose(1, 0))
+            str(cumsum_rewards.transpose(1, 0)),
+            str(times.mean()),
+            str(times.std() / np.sqrt(len(times)))
         ]) + "\n")
 
 if __name__ == "__main__":
