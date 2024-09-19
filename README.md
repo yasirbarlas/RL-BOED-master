@@ -23,7 +23,7 @@ We explore [Randomised Ensembled Double Q-Learning (REDQ)](https://arxiv.org/abs
 
 ## Bayesian Experimental Design Problems
 
-### Location Finding
+### Location Finding/Source Location
 
 There are $K$ objects on a $d$-dimensional space, and in this experiment we need to identify their locations $\boldsymbol{\theta} = \{\theta_{i}\}_{i = 1}^{K}$. Each object emits a signal, which obeys the inverse-square law. We need to select different designs $\xi$, which are essentially locations (or points) on the $d$-dimensional space. The signal strength increases as we select $\xi$ closer to these $K$ objects, and it decays as we choose $\xi$ further away from these objects.
 
@@ -68,7 +68,7 @@ The likelihood function is Bernoulli distributed and provides a binary outcome a
 
 See the arguments for each script at the end of the code, for example `process_results.py` can be written in command line as (with relevant directories input):
 
-``python process_results.py --fpaths="Documents\Training Results\boed_results_sbr_430000\source\progress.csv, Documents\Training Results\boed_results_sbr_430000\source_1\progress.csv, Documents\Training Results\boed_results_sbr_430000\source_2\progress.csv, Documents\Training Results\boed_results_sbr_430000\source_3\progress.csv, Documents\Training Results\boed_results_sbr_430000\source_4\progress.csv" --dest="Documents\Training Results\sbr430000_results.npz"``
+``python3 process_results.py --fpaths="Documents\Training Results\boed_results_sbr_430000\source\progress.csv, Documents\Training Results\boed_results_sbr_430000\source_1\progress.csv, Documents\Training Results\boed_results_sbr_430000\source_2\progress.csv, Documents\Training Results\boed_results_sbr_430000\source_3\progress.csv, Documents\Training Results\boed_results_sbr_430000\source_4\progress.csv" --dest="Documents\Training Results\sbr430000_results.npz"``
 
 - `Adaptive_{env}_{algo}.py`: File to initiate the training loop for the respective environment/experimental design problem {env} and algorithm {algo}; {env - Source}: Location Finding, {env - CES}: Constant Elasticity of Substitution, {env - Docking}: Biomolecular Docking.
 - `process_results.py`: Produces training datasets with the training performance from several random seeds, for a particular environment and algorithm.
@@ -77,4 +77,22 @@ See the arguments for each script at the end of the code, for example `process_r
 
 ### Training the Agents
 
+The experiments are quite expensive to run on a standard PC, and so we advise looking at using a high-performance computer. We use SLURM to run our experiments on NVIDIA A100 80GB PCIe and NVIDIA A100 40GB PCIe GPUs with 4 CPU cores and 40GB of RAM. An Intel(R) Xeon(R) Gold 6248R CPU @ 3.00GHz was used.
+
+We note that DroQ can be run through REDQ, by setting 'ens-size' and 'M' to be equal to each other (say 2), 'layer-norm = True', and 'dropout > 0' for the dropout probability (which should be larger than 0 for DroQ).
+
+We can choose a reward function based on the sequential prior contrastive estimation (sPCE), which is a lower bound on the expected information gain. This is the standard due to it being bounded by \log (n-contr-samples + 1), unlike the upper bound sequential nested Monte Carlo (sNMC). sPCE can be selected by setting 'bound-type = lower', and sNMC can be selected using 'bound-type = upper'. Rewards are dense here, meaning that the incremental sPCE/sNMC is provided to the agent during training in each experiment $t$. Setting 'bound-type = terminal' returns to the sparse reward setting, where the agent only receives a reward at the end of experimentation, which is the full sPCE.
+
+After deciding on an environment and algorithm to use, either run the relevant Python file on your IDE, or use Bash/command line to run the Python file with your chosen (environment and algorithm specific) values to parse (more values can be parsed, see the Python files):
+
+``python3 Adaptive_Source_REDQ.py --n-parallel=100 --n-contr-samples=100000 --n-rl-itr=20001 --log-dir="boed_results_discount_0.99/source"  --bound-type=lower --id=$1 --budget=30 --discount=0.99 --buffer-capacity=10000000 --tau=0.001 --pi-lr=0.0001 --qf-lr=0.0003 --M=2 --ens-size=2 --lstm-q-function=False --layer-norm=False --dropout=0``
+
+Your choice of random seeds to experiment with can be entered near the beginning of the Python file, replacing the 'seeds' variable with your chosen seeds to explore. The code understands which seed to use through the parsed 'id' value in Bash, if 'id = 1', then the first seed would be used for training, and so on. The Bash scripts we use loop over each of the 10 seeds in the list of the Python file, and run 10 jobs on SLURM, training an agent using a seed from the list.
+
+The saved agent and its training results will be available in the directory named in 'log-dir'.
+
 ### Evaluating the Agents
+
+Once an agent has been trained, it can be evaluated on the same environment it was trained on. The environment specific parameters, such as the number of locations $K$ in the Location Finding problem, can be edited here. This can be a method of testing generalisability to alternative scenarios. Testing the agent on both sPCE and sNMC can be done here too. Results of the final sPCE/sNMC values are located in the file (ideally .txt or .log) in 'dest'.
+
+``python3 select_policy_env.py --src="boed_results_sbr_430000/source_9/itr_20000.pkl" --dest="boed_results_sbr_430000/source_9/evaluation_lower.log" --edit_type="w" --seq_length=30 --bound_type=lower --n_contrastive_samples=1000000 --n_parallel=250 --n_samples=2000 --seed=1 --env="source" --source_d=2 --source_k=5 --source_b=0.1 --source_m=0.0001 --source_obs_sd=0.5 --ces_d=6 --ces_obs_sd=0.005 --docking_d=1``
