@@ -75,6 +75,8 @@ See the arguments for each script at the end of the code, for example `process_r
 - `plot_results.py`: Allows training performance results to be plot, using the data files produced by `process_results.py`.
 - `select_policy_env.py`: Evaluate/test a trained policy on a particular experimental design problem (the exact one it was trained on, or one with slightly different experimental parameters).
 
+If you have access to a high-performance computer through SLURM, we recommend making use of the Bash scripts in [**useful-bash-scripts**](/useful-bash-scripts)
+
 ### Training the Agents
 
 The experiments are quite expensive to run on a standard PC, and so we advise looking at using a high-performance computer. We use SLURM to run our experiments on NVIDIA A100 80GB PCIe and NVIDIA A100 40GB PCIe GPUs with 4 CPU cores and 40GB of RAM. An Intel(R) Xeon(R) Gold 6248R CPU @ 3.00GHz was used.
