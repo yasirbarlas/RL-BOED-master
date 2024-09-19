@@ -66,6 +66,15 @@ The likelihood function is Bernoulli distributed and provides a binary outcome a
 
 ### File Structure
 
+See the arguments for each script at the end of the code, for example `process_results.py` can be written in command line as (with relevant directories input):
+
+```python process_results.py --fpaths="Documents\Training Results\boed_results_sbr_430000\source\progress.csv, Documents\Training Results\boed_results_sbr_430000\source_1\progress.csv, Documents\Training Results\boed_results_sbr_430000\source_2\progress.csv, Documents\Training Results\boed_results_sbr_430000\source_3\progress.csv, Documents\Training Results\boed_results_sbr_430000\source_4\progress.csv" --dest="Documents\Training Results\sbr430000_results.npz"```
+
+- `Adaptive_{env}_{algo}.py`: File to initiate the training loop for the respective environment/experimental design problem {env} and algorithm {algo}; {env - Source}: Location Finding, {env - CES}: Constant Elasticity of Substitution, {env - Docking}: Biomolecular Docking.
+- `process_results.py`: Produces training datasets with the training performance from several random seeds, for a particular environment and algorithm.
+- `plot_results.py`: Allows training performance results to be plot, using the data files produced by `process_results.py`.
+- `select_policy_env.py`: Evaluate/test a trained policy on a particular experimental design problem (the exact one it was trained on, or one with slightly different experimental parameters).
+
 ### Training the Agents
 
 ### Evaluating the Agents
