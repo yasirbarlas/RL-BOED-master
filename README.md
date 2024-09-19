@@ -75,7 +75,7 @@ See the arguments for each script at the end of the code, for example `process_r
 - `plot_results.py`: Allows training performance results to be plot, using the data files produced by `process_results.py`.
 - `select_policy_env.py`: Evaluate/test a trained policy on a particular experimental design problem (the exact one it was trained on, or one with slightly different experimental parameters).
 
-If you have access to a high-performance computer through SLURM, we recommend making use of the Bash scripts in [**useful-bash-scripts**](/useful-bash-scripts)
+If you have access to a high-performance computer through SLURM, we recommend making use of the Bash scripts in [**useful-bash-scripts**](/useful-bash-scripts).
 
 ### Training the Agents
 
