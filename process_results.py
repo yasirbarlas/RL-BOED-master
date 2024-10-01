@@ -1,8 +1,11 @@
+# File for generating a single data file of training performance for multiple random seeds
+
+# Import libraries
 import csv
 import argparse
 import numpy as np
 
-
+# Convert string arrays to numpy arrays
 def str_to_np(arr_str):
 	# construct a numpy array from its string representation
 	arr_str = ''.join([
@@ -12,6 +15,7 @@ def str_to_np(arr_str):
 	])
 	return np.array(eval(arr_str))
 
+# Main code to execute, which combines all individual data files of training performance into a single one for every random seed
 def main(fpaths, dest):
 	fpaths = fpaths.split(", ")
 	ameans = []
@@ -103,6 +107,7 @@ def main(fpaths, dest):
 		rmaxs=rmaxs, rmins=rmins, pstds=pstds, pmeans=pmeans, emeans=emeans,
 		estds=estds, alphas=alphas, qlosses=qlosses, plosses=plosses
 	)
+# Parse arguments as required, namely the file paths for each random seed performance, and the final destination path of the combined data file
 if __name__ == "__main__":
 	parser = argparse.ArgumentParser(description="RL results parser")
 	parser.add_argument("--fpaths", nargs="?", default="", type=str)
