@@ -1,3 +1,6 @@
+# File for evaluating/testing an agent on a chosen experimental design problem
+
+# Import libraries
 import argparse
 import sys
 
@@ -22,6 +25,7 @@ device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 if torch.cuda.is_available():
     torch.set_default_device(device)
 
+# Environment functions for each experimental design problem, which each make an environment for use in reinforcement learning
 def make_source_env(d, k, b, m, obs_sd, n_parallel, budget, n_cont_samples, bound_type, true_model=None):
     model = SourceModel(n_parallel=n_parallel, d=d, k=k, b=b, m=m, obs_sd=obs_sd)
     design_space = BatchBox(low=-4., high=4., shape=(1, 1, 1, d))
@@ -62,6 +66,7 @@ def make_docking_env(d, n_parallel, budget, n_cont_samples, bound_type, true_mod
                     normalize_obs=True))
     return env
 
+# Main code for evaluating the agent
 def main(src, results, dest, n_contrastive_samples, n_parallel,
          seq_length, edit_type, n_samples, seed, bound_type, env, source_d=2, source_k=2, 
          source_b=1e-1, source_m=1e-4, source_obs_sd=0.5, ces_d=6, ces_obs_sd=0.005, docking_d=1):
@@ -69,13 +74,16 @@ def main(src, results, dest, n_contrastive_samples, n_parallel,
     if edit_type != 'a' and edit_type != 'w':
         sys.exit(f"inadmissible edit_type: {edit_type}")
     torch.set_printoptions(threshold=int(1e10))
+    # Load data file with the agent
     data = joblib.load(src)
     print(f"loaded data from {src}")
     if hasattr(data['algo'], '_sampler'):
         del data['algo']._sampler
     torch.cuda.empty_cache()
+    # Select agent from the data file
     algo = data['algo']
 
+    # Select required experimental design problem environment
     if env.lower() == "source":
         env = make_source_env(source_d, source_k, source_b, source_m, source_obs_sd, n_parallel, seq_length, n_contrastive_samples, bound_type)
     elif env.lower() == "ces":
@@ -83,7 +91,7 @@ def main(src, results, dest, n_contrastive_samples, n_parallel,
     elif env.lower() == "docking":
         env = make_docking_env(docking_d, n_parallel, seq_length, n_contrastive_samples, bound_type)
 
-    # If SUNRISE, we have (potentially) multiple policies
+    # If SUNRISE, we have (potentially) multiple policies, all policies need to be in evaluation mode for PyTorch
     if isinstance(algo, SUNRISE):
         pis = [pi.eval() for pi in algo._policies]
     else:
@@ -95,9 +103,11 @@ def main(src, results, dest, n_contrastive_samples, n_parallel,
     env.env.n_parallel = n_parallel
     env.env.bound_type = bound_type
     rewards = []
+    # Generate number of iterations to run based on 'n_samples' and 'n_parallel'
     rep = n_samples // env.env.n_parallel
     print(f"{n_samples} / {env.env.n_parallel} = {rep} iterations to run")
     t0 = time()
+    # Set to True if our agent should randomly select designs (instead of using the imported policies)
     random = False
     if results is None:
         times = []
@@ -111,6 +121,7 @@ def main(src, results, dest, n_contrastive_samples, n_parallel,
             for i in range(seq_length):
                 mask = torch.ones_like(obs, dtype=torch.bool)[..., :1]
                 ts = time()
+                # The following are specific to SUNRISE
                 # Randomly choose a policy to use, and use the sampled action from that policy (generally best performance)
                 if isinstance(algo, SUNRISE):
                     acts = []
@@ -140,6 +151,7 @@ def main(src, results, dest, n_contrastive_samples, n_parallel,
                 #        means.append(dist_info["mean"])
                 #    stacked_tensors = torch.stack(means)
                 #    act = torch.mean(stacked_tensors, dim=0)
+                # If not SUNRISE
                 else:
                     act, dist_info = pi.get_actions(obs, mask=mask)
                 te = time()
@@ -171,6 +183,7 @@ def main(src, results, dest, n_contrastive_samples, n_parallel,
                 # print(f"reward {reward[0]}")
                 rewards[-1].append(reward)
             rewards[-1] = torch.stack(rewards[-1])
+    # For other types of files not acquired through reinforcement learning
     else:
         with open(results, 'rb') as results_file:
             ys = []
@@ -198,6 +211,7 @@ def main(src, results, dest, n_contrastive_samples, n_parallel,
                         design[j*n_parallel:(j+1)*n_parallel])
                     rewards[-1].append(reward)
                 rewards[-1] = torch.stack(rewards[-1])
+    # Gather relevant statistics such as evaluation time, rewards, ...
     times = np.array(times)
     print(f"mean time = {times.mean()}")
     print(f"se time = {times.std() / np.sqrt(len(times))}")
@@ -210,6 +224,7 @@ def main(src, results, dest, n_contrastive_samples, n_parallel,
     t1 = time()
     print(f"compute time {t1-t0} seconds")
     print(f"saving results to {dest}")
+    # Write statistics (results) of the evaluation to a text file
     with open(dest, edit_type) as destfile:
         destfile.writelines("\n".join([
             src,
@@ -220,6 +235,7 @@ def main(src, results, dest, n_contrastive_samples, n_parallel,
             str(times.std() / np.sqrt(len(times)))
         ]) + "\n")
 
+# Used to parse arguments required for evaluation
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--src", type=str)
