@@ -205,7 +205,7 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
 
 # Parse arguments as required (hyperparameters, etc.)
 if __name__ == "__main__":
-
+    # https://stackoverflow.com/questions/715417/converting-from-a-string-to-boolean-in-python
     def str2bool(v):
         if isinstance(v, bool):
             return v

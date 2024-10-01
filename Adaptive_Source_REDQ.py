@@ -30,11 +30,14 @@ from pyro.util import set_seed
 from torch import nn
 from dowel import logger
 
+# Seeds to train on (an agent can only be trained on one seed, this file allows you to select one of the seeds in the list)
 seeds = [373693, 943929, 675273, 79387, 508137, 557390, 756177, 155183, 262598,
          572185]
 
+# Get device for PyTorch (GPU or CPU for training)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+# Main function for training based on a set of hyperparameters
 def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
          log_dir=None, snapshot_mode="gap", snapshot_gap=500, bound_type=LOWER,
          src_filepath=None, discount=1., alpha=None, k=2, d=2, log_info=None,
@@ -43,7 +46,7 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
          layer_normalization=False):
     if log_info is None:
         log_info = []
-
+    # Function built underneath 'main()'
     @wrap_experiment(log_dir=log_dir, snapshot_mode=snapshot_mode,
                      snapshot_gap=snapshot_gap)
     def redq_source(ctxt=None, n_parallel=1, budget=1, n_rl_itr=1,
@@ -64,7 +67,7 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
 
         set_seed(seed)
         set_rng_seed(seed)
-        # if there is a saved agent to load
+        # If there is a saved agent to load
         if src_filepath:
             logger.log(f"loading data from {src_filepath}")
             data = joblib.load(src_filepath)
@@ -80,13 +83,19 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
             if alpha is not None:
                 redq._use_automatic_entropy_tuning = False
                 redq._fixed_alpha = alpha
+        
+        # Train from scratch
         else:
             logger.log("creating new policy")
+            # Choose number of nodes in the neural networks for each layer
             layer_size = 128
+            # Construct the design/action and observation spaces
             design_space = BatchBox(low=-4., high=4., shape=(1, 1, 1, d))
             obs_space = BatchBox(low=torch.as_tensor([-4.] * d + [-3.]), high=torch.as_tensor([4.] * d + [10.]))
+            # Choose the Location Finding statistical model (since this is for the Location Finding experimental design problem)
             model = SourceModel(n_parallel=n_parallel, d=d, k=k)
 
+            # Function to make a Gymnasium environment of an experimental design problem
             def make_env(design_space, obs_space, model, budget, n_cont_samples,
                          bound_type, true_model=None):
                 env = GymEnv(
@@ -100,6 +109,7 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
                 )
                 return env
 
+            # Function to make a policy
             def make_policy():
                 return AdaptiveTanhGaussianPolicy(
                     env_spec=env.spec,
@@ -115,6 +125,7 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
                     max_std=np.exp(0.),
                 )
 
+            # Function to make a Q-function
             def make_q_func():
                 if lstm_qfunction == True:
                     return AdaptiveLSTMQFunction(
@@ -139,13 +150,17 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
                         layer_normalization=layer_normalization
                     )
 
+            # Make environment, policy, and Q-functions
             env = make_env(design_space, obs_space, model, budget, n_cont_samples, bound_type)
-
+            
             policy = make_policy()
             qfs = [make_q_func() for _ in range(ens_size)]
+            # Replay buffer for storing transitions
             replay_buffer = PathBuffer(capacity_in_transitions=buffer_capacity)
+            # Sampler class for running workers (Garage-specific)
             sampler = LocalSampler(agents=policy, envs=env, max_episode_length=budget, worker_class=VectorWorker)
 
+            # REDQ algorithm
             redq = REDQ(env_spec=env.spec,
                       policy=policy,
                       qfs=qfs,
@@ -166,10 +181,13 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
                       ent_anneal_rate=1/1.4e4)
 
         redq.to()
+        # Setup algorithm and environment (Garage-specific)
         trainer = Trainer(snapshot_config=ctxt)
         trainer.setup(algo=redq, env=env)
+        # Start training using 'n_rl_itr' epochs
         trainer.train(n_epochs=n_rl_itr, batch_size=n_parallel * budget)
 
+    # Run function for training
     redq_source(n_parallel=n_parallel, budget=budget, n_rl_itr=n_rl_itr,
                n_cont_samples=n_cont_samples, seed=seed,
                src_filepath=src_filepath, discount=discount, alpha=alpha, k=k,
@@ -180,8 +198,9 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
 
     logger.dump_all()
 
+# Parse arguments as required (hyperparameters, etc.)
 if __name__ == "__main__":
-
+    # https://stackoverflow.com/questions/715417/converting-from-a-string-to-boolean-in-python
     def str2bool(v):
         if isinstance(v, bool):
             return v
