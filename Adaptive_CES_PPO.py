@@ -2,6 +2,8 @@
 Use Proximal Policy Optimisation to learn an agent that adaptively designs constant elasticity of
 substitution experiments
 """
+
+# Import libraries
 import argparse
 
 import joblib
@@ -27,11 +29,14 @@ from dowel import logger
 
 from garage.torch.optimizers import OptimizerWrapper
 
+# Seeds to train on (an agent can only be trained on one seed, this file allows you to select one of the seeds in the list)
 seeds = [373693, 943929, 675273, 79387, 508137, 557390, 756177, 155183, 262598,
          572185]
 
+# Get device for PyTorch (GPU or CPU for training)
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
+# Main function for training based on a set of hyperparameters
 def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
          log_dir=None, snapshot_mode="gap", snapshot_gap=500, bound_type=LOWER,
          src_filepath=None, discount=1., d=6, log_info=None,
@@ -41,7 +46,7 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
          stop_entropy_gradient=False):
     if log_info is None:
         log_info = []
-
+    # Function built underneath 'main()'
     @wrap_experiment(log_dir=log_dir, snapshot_mode=snapshot_mode,
                      snapshot_gap=snapshot_gap)
     def ppo_ces(ctxt=None, n_parallel=1, budget=1, n_rl_itr=1,
@@ -62,22 +67,25 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
 
         set_seed(seed)
         set_rng_seed(seed)
-        # if there is a saved agent to load
+        # If there is a saved agent to load
         if src_filepath:
             logger.log(f"loading data from {src_filepath}")
             data = joblib.load(src_filepath)
             env = data["env"]
             ppo = data["algo"]
+        
+        # Train from scratch
         else:
             logger.log("creating new policy")
+            # Choose number of nodes in the neural networks for each layer
             layer_size = 128
+            # Construct the design/action and observation spaces
             design_space = BatchBox(low=0.01, high=100, shape=(1, 1, 1, d))
-            obs_space = BatchBox(low=torch.zeros((d+1,)),
-                                 high=torch.as_tensor([100.] * d + [1.])
-                                 )
-            model = CESModel(n_parallel=n_parallel, n_elbo_steps=1000,
-                             n_elbo_samples=10, d=d)
+            obs_space = BatchBox(low=torch.zeros((d+1,)), high=torch.as_tensor([100.] * d + [1.]))
+            # Choose the CES statistical model (since this is for the CES experimental design problem)
+            model = CESModel(n_parallel=n_parallel, n_elbo_steps=1000, n_elbo_samples=10, d=d)
 
+            # Function to make a Gymnasium environment of an experimental design problem
             def make_env(design_space, obs_space, model, budget, n_cont_samples,
                          bound_type, true_model=None):
                 env = GymEnv(
@@ -91,6 +99,7 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
                 )
                 return env
 
+            # Function to make a policy
             def make_policy():
                 return AdaptiveGaussianMLPPolicy(
                     env_spec=env.spec,
@@ -106,6 +115,7 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
                     max_std=np.exp(0.),
                 )
 
+            # Function to make a value function
             def make_v_func():
                 return AdaptiveMLPValueFunction(
                     env_spec=env.spec,
@@ -118,28 +128,30 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
                     encoding_dim=16
                 )
 
-            env = make_env(design_space, obs_space, model, budget,
-                           n_cont_samples, bound_type)
+            # Make environment, policy, and value function
+            env = make_env(design_space, obs_space, model, budget, n_cont_samples, bound_type)
 
             policy = make_policy()
             value_function = make_v_func()
             
+            # Policy optimizer for PPO
             policy_optimizer = OptimizerWrapper(
                 (torch.optim.Adam, dict(lr=pi_lr)),
                 policy,
                 max_optimization_epochs=10,
                 minibatch_size=minibatch_size)
             
+            # Value function optimizer for PPO
             vf_optimizer = OptimizerWrapper(
                 (torch.optim.Adam, dict(lr=vf_lr)),
                 value_function,
                 max_optimization_epochs=10,
                 minibatch_size=minibatch_size)
 
-            sampler = LocalSampler(agents=policy, envs=env,
-                                   max_episode_length=budget,
-                                   worker_class=VectorWorker)
-
+            # Sampler class for running workers (Garage-specific)
+            sampler = LocalSampler(agents=policy, envs=env, max_episode_length=budget, worker_class=VectorWorker)
+            
+            # PPO algorithm
             ppo = PPO(env_spec=env.spec,
                       policy=policy,
                       value_function=value_function,
@@ -157,11 +169,14 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
                       use_softplus_entropy=use_softplus_entropy,
                       stop_entropy_gradient=stop_entropy_gradient,
                       entropy_method=entropy_method)
-                      
+        
+        # Setup algorithm and environment (Garage-specific)
         trainer = Trainer(snapshot_config=ctxt)
         trainer.setup(algo=ppo, env=env)
+        # Start training using 'n_rl_itr' epochs
         trainer.train(n_epochs=n_rl_itr, batch_size=n_parallel * budget)
 
+    # Run function for training
     ppo_ces(n_parallel=n_parallel, budget=budget, n_rl_itr=n_rl_itr,
                n_cont_samples=n_cont_samples, seed=seed,
                src_filepath=src_filepath, discount=discount,
@@ -172,6 +187,7 @@ def main(n_parallel=1, budget=1, n_rl_itr=1, n_cont_samples=10, seed=0,
 
     logger.dump_all()
 
+# Parse arguments as required (hyperparameters, etc.)
 if __name__ == "__main__":
 
     def str2bool(v):
