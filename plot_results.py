@@ -1,8 +1,11 @@
+# File for generating plots of training performance for agents (of multiple random seeds)
+
+# Import libraries
 import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1.inset_locator import inset_axes
 
-# https://arxiv.org/abs/1904.06979
+# Inspired by https://arxiv.org/abs/1904.06979
 def compute_central_tendency_and_error(id_central, id_error, sample):
 
     try:
@@ -38,24 +41,32 @@ def compute_central_tendency_and_error(id_central, id_error, sample):
 #plt.rcParams['legend.fontsize'] = 15
 #plt.rcParams['figure.titlesize'] = 36
 
+# Plot specific parameters
 fig_dpi = 100
 width, height = (10, 6)
 #titlesize = 20
 
+# The following are based on our named files/agents
+
+# Gather all files for Biomolecular Docking related training performance, and label each appropriately
 folders = ["../docking_redq_results.npz", "../docking_sbr430000_results.npz", "../docking_droq0.01_results.npz", "../docking_sunrise20_results.npz"]
 labels = ["REDQ-Blau", "SBR-430000", "DroQ-0.01", "SUNRISE-20"]
 title_template = "Biomolecular Docking: Trained Algorithms"
 file_template = "docking_combination_new_central_tend"
 
+# Gather all files for CES related training performance, and label each appropriately
 #folders = ["../ces_droq0.1_results.npz", "../ces_sunrise10_results.npz", "../ces_sunrise10_droq0.1_tau0.01_results.npz"]
 #labels = ["DroQ-0.1", "SUNRISE-10", "Ours"]
 #title_template = "Constant Elasticity of Substitution: Combination of Algorithms"
 #file_template = "ces_combination_new_central_tend"
 
+# Gather all files for Location Finding related training performance, and label each appropriately
 #folders = ["../source_droq0.01_results.npz", "../source_sunrise20_results.npz", "../source_sunrise20_droq0.01_tau0.01_results.npz"]
 #labels = ["DroQ-0.01", "SUNRISE-20", "Ours"]
 #title_template = "Location Finding: Combination of Algorithms"
 #file_template = "combination_new_central_tend"
+
+# The following are for agents trained by each specific algorithm and under the same experimental design problem
 
 #folders = ["../source_sunrise10_results.npz", "../source_sunrise20_results.npz"]
 #labels = ["SUNRISE-10", "SUNRISE-20"]
@@ -97,12 +108,14 @@ file_template = "docking_combination_new_central_tend"
 #title_template = "Constant Elasticity of Substitution: Randomised Ensembled Double Q-Learning"
 #file_template = "ces_redq_new_central_tend"
 
+# Plot/experimental design specific parameters
 step = 50
-L = 1e5
+L = 1e5 # number of contrastive samples
 err_bar = "se"
 #plt.figure(figsize=(width, height), dpi=fig_dpi)
 fig, ax = plt.subplots(figsize=(width, height), dpi=fig_dpi)
 
+# Choose position of zoomed in portion of plot
 #inset_position = [0.3, 0.28, 4, 2]  # [x0, y0, width, height] # other source
 #inset_position = [0.1, 0.05, 3, 1]  # [x0, y0, width, height] # sbr source
 inset_position = [0.3, 0.28, 4, 2]  # [x0, y0, width, height] # other ces
@@ -112,9 +125,11 @@ inset_position = [0.3, 0.28, 4, 2]  # [x0, y0, width, height] # other ces
 #                                      inset_position[2], inset_position[3]), 
 #                      bbox_transform=ax.transAxes)
 
+# Loop over all folders to examine performance of
 for ig, folder in enumerate(folders):
     data = np.load(folder)
 
+    # Select type of performance to measure (mean performance)
     typ = "rmeans" if err_bar in ["std", "se"] else "rmedians"
     means = data[typ].astype(np.float64).reshape((-1,))
     # Makes the 10 different seeds stack together and calculate overall mean of these 10 together
@@ -163,6 +178,7 @@ for ig, folder in enumerate(folders):
 
 #ax.hlines(np.log(L+1), xmin=xlim[0], xmax=xlim[1], color="black", linestyles='dashed', label = "log(100001)")
 
+# Zoomed in portion specific parameters
 #print(means[-10:])
 ax.set_xlabel("Iterations")
 ax.set_ylabel("sPCE")
@@ -171,6 +187,7 @@ ax.set_title(f"{title_template}")
 ax.grid()
 ax.legend(loc="lower right")
 
+# Axes of zoomed in portion
 #ax_inset.set_xlim(15000, 20000)
 #ax_inset.set_ylim(10, 11.5) # other source, other ces
 #ax_inset.set_ylim(10, 11) # sbr source
@@ -184,4 +201,5 @@ ax.legend(loc="lower right")
 
 #ax_inset.set_title("Zoomed In", fontsize=10)
 
+# Save file as .pdf
 plt.savefig(f"Training-Plots/training_{file_template}.pdf", transparent=True, bbox_inches="tight")
