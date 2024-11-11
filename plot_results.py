@@ -202,4 +202,4 @@ ax.legend(loc="lower right")
 #ax_inset.set_title("Zoomed In", fontsize=10)
 
 # Save file as .pdf
-plt.savefig(f"Training-Plots/training_{file_template}.pdf", transparent=True, bbox_inches="tight")
+plt.savefig(f"training_{file_template}.pdf", transparent=True, bbox_inches="tight")
