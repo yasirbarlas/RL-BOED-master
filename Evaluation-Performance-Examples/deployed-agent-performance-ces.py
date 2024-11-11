@@ -62,5 +62,5 @@ ax_inset.set_yticks([12, 15])
 
 ax_inset.set_title("Zoomed In", fontsize=10)
 
-plt.savefig("Evaluation-Plots/deployed-agent-performance-with-inset-ces.pdf", transparent=True, bbox_inches="tight")
+plt.savefig("deployed-agent-performance-with-inset-ces.pdf", transparent=True, bbox_inches="tight")
 plt.show()
