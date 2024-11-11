@@ -57,5 +57,5 @@ ax_inset.set_yticks([0.2, 0.3, 0.4])
 
 ax_inset.set_title("Zoomed In", fontsize=10)
 
-plt.savefig("Evaluation-Plots/deployed-agent-performance-with-inset-docking.pdf", transparent=True, bbox_inches="tight")
+plt.savefig("deployed-agent-performance-with-inset-docking.pdf", transparent=True, bbox_inches="tight")
 plt.show()
